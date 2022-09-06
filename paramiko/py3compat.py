@@ -44,9 +44,7 @@ if PY2:
     encodebytes = base64.encodestring
 
     def bytestring(s):  # NOQA
-        if isinstance(s, unicode):  # NOQA
-            return s.encode("utf-8")
-        return s
+        return s.encode("utf-8") if isinstance(s, unicode) else s
 
     byte_ord = ord  # NOQA
     byte_chr = chr  # NOQA
@@ -65,14 +63,16 @@ if PY2:
         else:
             raise TypeError("Expected unicode or bytes, got {!r}".format(s))
 
-    def u(s, encoding="utf8"):  # NOQA
+    def u(s, encoding="utf8"):    # NOQA
         """cast bytes or unicode to unicode"""
-        if isinstance(s, str):
+        if (
+            isinstance(s, str)
+            or not isinstance(s, unicode)
+            and isinstance(s, buffer)
+        ):
             return s.decode(encoding)
         elif isinstance(s, unicode):  # NOQA
             return s
-        elif isinstance(s, buffer):  # NOQA
-            return s.decode(encoding)
         else:
             raise TypeError("Expected unicode or bytes, got {!r}".format(s))
 

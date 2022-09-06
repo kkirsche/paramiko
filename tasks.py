@@ -39,27 +39,17 @@ def test(
     # running headless? Probably?
     if color:
         opts += " --color=yes"
-    opts += " --capture={}".format(capture)
+    opts += f" --capture={capture}"
     if "-m" not in opts and not include_slow:
         opts += " -m 'not slow'"
     if k is not None and not ("-k" in opts if opts else False):
-        opts += " -k {}".format(k)
+        opts += f" -k {k}"
     if x and not ("-x" in opts if opts else False):
         opts += " -x"
     if loop_on_fail and not ("-f" in opts if opts else False):
         opts += " -f"
-    modstr = ""
-    if module is not None:
-        # NOTE: implicit test_ prefix as we're not on pytest-relaxed yet
-        modstr = " tests/test_{}.py".format(module)
-    # Switch runner depending on coverage or no coverage.
-    # TODO: get pytest's coverage plugin working, IIRC it has issues?
-    runner = "pytest"
-    if coverage:
-        # Leverage how pytest can be run as 'python -m pytest', and then how
-        # coverage can be told to run things in that manner instead of
-        # expecting a literal .py file.
-        runner = "coverage run -m pytest"
+    modstr = f" tests/test_{module}.py" if module is not None else ""
+    runner = "coverage run -m pytest" if coverage else "pytest"
     # Strip SSH_AUTH_SOCK from parent env to avoid pollution by interactive
     # users.
     # TODO: once pytest coverage plugin works, see if there's a pytest-native
@@ -68,7 +58,7 @@ def test(
     env = dict(os.environ)
     if "SSH_AUTH_SOCK" in env:
         del env["SSH_AUTH_SOCK"]
-    cmd = "{} {} {}".format(runner, opts, modstr)
+    cmd = f"{runner} {opts} {modstr}"
     # NOTE: we have a pytest.ini and tend to use that over PYTEST_ADDOPTS.
     ctx.run(cmd, pty=True, env=env, replace_env=True)
 

@@ -117,9 +117,7 @@ class BufferedPipe(object):
         """
         self._lock.acquire()
         try:
-            if len(self._buffer) == 0:
-                return False
-            return True
+            return len(self._buffer) != 0
         finally:
             self._lock.release()
 

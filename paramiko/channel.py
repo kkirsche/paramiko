@@ -145,7 +145,7 @@ class Channel(ClosingContextManager):
         """
         Return a string representation of this object, for debugging.
         """
-        out = "<paramiko.Channel {}".format(self.chanid)
+        out = f"<paramiko.Channel {self.chanid}"
         if self.closed:
             out += " (closed)"
         elif self.active:
@@ -153,10 +153,10 @@ class Channel(ClosingContextManager):
                 out += " (EOF received)"
             if self.eof_sent:
                 out += " (EOF sent)"
-            out += " (open) window={}".format(self.out_window_size)
+            out += f" (open) window={self.out_window_size}"
             if len(self.in_buffer) > 0:
-                out += " in-buffer={}".format(len(self.in_buffer))
-        out += " -> " + repr(self.transport)
+                out += f" in-buffer={len(self.in_buffer)}"
+        out += f" -> {repr(self.transport)}"
         out += ">"
         return out
 
@@ -774,9 +774,7 @@ class Channel(ClosingContextManager):
         """
         self.lock.acquire()
         try:
-            if self.closed or self.eof_sent:
-                return True
-            return self.out_window_size > 0
+            return True if self.closed or self.eof_sent else self.out_window_size > 0
         finally:
             self.lock.release()
 
@@ -954,10 +952,10 @@ class Channel(ClosingContextManager):
             0 (stop receiving), 1 (stop sending), or 2 (stop receiving and
               sending).
         """
-        if (how == 0) or (how == 2):
+        if how in [0, 2]:
             # feign "read" shutdown
             self.eof_received = 1
-        if (how == 1) or (how == 2):
+        if how in [1, 2]:
             self.lock.acquire()
             try:
                 m = self._send_eof()
@@ -1009,7 +1007,7 @@ class Channel(ClosingContextManager):
         # a window update
         self.in_window_threshold = window_size // 10
         self.in_window_sofar = 0
-        self._log(DEBUG, "Max packet in: {} bytes".format(max_packet_size))
+        self._log(DEBUG, f"Max packet in: {max_packet_size} bytes")
 
     def _set_remote_channel(self, chanid, window_size, max_packet_size):
         self.remote_chanid = chanid
@@ -1018,12 +1016,10 @@ class Channel(ClosingContextManager):
             max_packet_size
         )
         self.active = 1
-        self._log(
-            DEBUG, "Max packet out: {} bytes".format(self.out_max_packet_size)
-        )
+        self._log(DEBUG, f"Max packet out: {self.out_max_packet_size} bytes")
 
     def _request_success(self, m):
-        self._log(DEBUG, "Sesch channel {} request ok".format(self.chanid))
+        self._log(DEBUG, f"Sesch channel {self.chanid} request ok")
         self.event_ready = True
         self.event.set()
         return
@@ -1039,20 +1035,14 @@ class Channel(ClosingContextManager):
                 self.transport._send_user_message(m)
 
     def _feed(self, m):
-        if isinstance(m, bytes_types):
-            # passed from _feed_extended
-            s = m
-        else:
-            s = m.get_binary()
+        s = m if isinstance(m, bytes_types) else m.get_binary()
         self.in_buffer.feed(s)
 
     def _feed_extended(self, m):
         code = m.get_int()
         s = m.get_binary()
         if code != 1:
-            self._log(
-                ERROR, "unknown extended_data type {}; discarding".format(code)
-            )
+            self._log(ERROR, f"unknown extended_data type {code}; discarding")
             return
         if self.combine_stderr:
             self._feed(s)
@@ -1064,7 +1054,7 @@ class Channel(ClosingContextManager):
         self.lock.acquire()
         try:
             if self.ultra_debug:
-                self._log(DEBUG, "window up {}".format(nbytes))
+                self._log(DEBUG, f"window up {nbytes}")
             self.out_window_size += nbytes
             self.out_buffer_cv.notify_all()
         finally:
@@ -1096,10 +1086,7 @@ class Channel(ClosingContextManager):
                     self, term, width, height, pixelwidth, pixelheight, modes
                 )
         elif key == "shell":
-            if server is None:
-                ok = False
-            else:
-                ok = server.check_channel_shell_request(self)
+            ok = False if server is None else server.check_channel_shell_request(self)
         elif key == "env":
             name = m.get_string()
             value = m.get_string()
@@ -1109,10 +1096,7 @@ class Channel(ClosingContextManager):
                 ok = server.check_channel_env_request(self, name, value)
         elif key == "exec":
             cmd = m.get_string()
-            if server is None:
-                ok = False
-            else:
-                ok = server.check_channel_exec_request(self, cmd)
+            ok = False if server is None else server.check_channel_exec_request(self, cmd)
         elif key == "subsystem":
             name = m.get_text()
             if server is None:
@@ -1151,7 +1135,7 @@ class Channel(ClosingContextManager):
             else:
                 ok = server.check_channel_forward_agent_request(self)
         else:
-            self._log(DEBUG, 'Unhandled channel request "{}"'.format(key))
+            self._log(DEBUG, f'Unhandled channel request "{key}"')
             ok = False
         if want_reply:
             m = Message()
@@ -1173,7 +1157,7 @@ class Channel(ClosingContextManager):
                     self._pipe.set_forever()
         finally:
             self.lock.release()
-        self._log(DEBUG, "EOF received ({})".format(self._name))
+        self._log(DEBUG, f"EOF received ({self._name})")
 
     def _handle_close(self, m):
         self.lock.acquire()
@@ -1209,7 +1193,7 @@ class Channel(ClosingContextManager):
         return size
 
     def _log(self, level, msg, *args):
-        self.logger.log(level, "[chan " + self._name + "] " + msg, *args)
+        self.logger.log(level, f"[chan {self._name}] {msg}", *args)
 
     def _event_pending(self):
         self.event.clear()
@@ -1245,7 +1229,7 @@ class Channel(ClosingContextManager):
         m.add_byte(cMSG_CHANNEL_EOF)
         m.add_int(self.remote_chanid)
         self.eof_sent = True
-        self._log(DEBUG, "EOF sent ({})".format(self._name))
+        self._log(DEBUG, f"EOF sent ({self._name})")
         return m
 
     def _close_internal(self):
@@ -1279,14 +1263,12 @@ class Channel(ClosingContextManager):
             if self.closed or self.eof_received or not self.active:
                 return 0
             if self.ultra_debug:
-                self._log(DEBUG, "addwindow {}".format(n))
+                self._log(DEBUG, f"addwindow {n}")
             self.in_window_sofar += n
             if self.in_window_sofar <= self.in_window_threshold:
                 return 0
             if self.ultra_debug:
-                self._log(
-                    DEBUG, "addwindow send {}".format(self.in_window_sofar)
-                )
+                self._log(DEBUG, f"addwindow send {self.in_window_sofar}")
             out = self.in_window_sofar
             self.in_window_sofar = 0
             return out
@@ -1329,7 +1311,7 @@ class Channel(ClosingContextManager):
             size = self.out_max_packet_size - 64
         self.out_window_size -= size
         if self.ultra_debug:
-            self._log(DEBUG, "window down to {}".format(self.out_window_size))
+            self._log(DEBUG, f"window down to {self.out_window_size}")
         return size
 
 
@@ -1355,7 +1337,7 @@ class ChannelFile(BufferedFile):
         """
         Returns a string representation of this object, for debugging.
         """
-        return "<paramiko.ChannelFile from " + repr(self.channel) + ">"
+        return f"<paramiko.ChannelFile from {repr(self.channel)}>"
 
     def _read(self, size):
         return self.channel.recv(size)

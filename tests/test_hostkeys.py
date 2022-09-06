@@ -93,9 +93,7 @@ class HostKeysTest(unittest.TestCase):
         self.assertTrue(x is not None)
         fp = hexlify(x["ssh-rsa"].get_fingerprint()).upper()
         self.assertEqual(b"E6684DB30E109B67B70FF1DC5C7F1363", fp)
-        i = 0
-        for key in hostdict:
-            i += 1
+        i = sum(1 for _ in hostdict)
         self.assertEqual(2, i)
 
     def test_dict_set(self):
@@ -135,7 +133,7 @@ class HostKeysTest(unittest.TestCase):
         hostdict = paramiko.HostKeys("hostfile.temp")
         target = "happy.example.com"
         entry = hostdict[target]
-        key_type_list = [key_type for key_type in entry]
+        key_type_list = list(entry)
         for key_type in key_type_list:
             del entry[key_type]
 

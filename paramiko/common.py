@@ -19,6 +19,7 @@
 """
 Common constants and global variables.
 """
+
 import logging
 from paramiko.py3compat import byte_chr, PY2, long, b
 
@@ -160,7 +161,8 @@ AUTH_SUCCESSFUL, AUTH_PARTIALLY_SUCCESSFUL, AUTH_FAILED = range(3)
     OPEN_FAILED_CONNECT_FAILED,
     OPEN_FAILED_UNKNOWN_CHANNEL_TYPE,
     OPEN_FAILED_RESOURCE_SHORTAGE,
-) = range(0, 5)
+) = range(5)
+
 
 
 CONNECTION_FAILED_CODE = {

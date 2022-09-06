@@ -103,10 +103,7 @@ class AuthHandler(object):
         return self.authenticated
 
     def get_username(self):
-        if self.transport.server_mode:
-            return self.auth_username
-        else:
-            return self.username
+        return self.auth_username if self.transport.server_mode else self.username
 
     def auth_none(self, username, event):
         self.transport.lock.acquire()
@@ -318,7 +315,7 @@ class AuthHandler(object):
         # Normal attempts to handshake follow from here.
         # Only consider RSA algos from our list, lest we agree on another!
         my_algos = [x for x in self.transport.preferred_pubkeys if "rsa" in x]
-        self._log(DEBUG, "Our pubkey algorithm list: {}".format(my_algos))
+        self._log(DEBUG, f"Our pubkey algorithm list: {my_algos}")
         # Short-circuit negatively if user disabled all RSA algos (heh)
         if not my_algos:
             raise SSHException(
@@ -331,14 +328,8 @@ class AuthHandler(object):
         pubkey_algo = None
         if server_algo_str:
             server_algos = server_algo_str.split(",")
-            self._log(
-                DEBUG, "Server-side algorithm list: {}".format(server_algos)
-            )
-            # Only use algos from our list that the server likes, in our own
-            # preference order. (NOTE: purposefully using same style as in
-            # Transport...expect to refactor later)
-            agreement = list(filter(server_algos.__contains__, my_algos))
-            if agreement:
+            self._log(DEBUG, f"Server-side algorithm list: {server_algos}")
+            if agreement := list(filter(server_algos.__contains__, my_algos)):
                 pubkey_algo = agreement[0]
                 self._log(
                     DEBUG,
@@ -435,20 +426,14 @@ class AuthHandler(object):
                                 )
                             except GSS_EXCEPTIONS as e:
                                 return self._handle_local_gss_failure(e)
-                            # After this step the GSSAPI should not return any
-                            # token. If it does, we keep sending the token to
-                            # the server until no more token is returned.
                             if next_token is None:
                                 break
-                            else:
-                                m = Message()
-                                m.add_byte(cMSG_USERAUTH_GSSAPI_TOKEN)
-                                m.add_string(next_token)
-                                self.transport.send_message(m)
+                            m = Message()
+                            m.add_byte(cMSG_USERAUTH_GSSAPI_TOKEN)
+                            m.add_string(next_token)
+                            self.transport.send_message(m)
                     else:
-                        raise SSHException(
-                            "Received Package: {}".format(MSG_NAMES[ptype])
-                        )
+                        raise SSHException(f"Received Package: {MSG_NAMES[ptype]}")
                     m = Message()
                     m.add_byte(cMSG_USERAUTH_GSSAPI_MIC)
                     # send the MIC to the server
@@ -477,9 +462,7 @@ Error Message: {}
                     self._parse_userauth_failure(m)
                     return
                 else:
-                    raise SSHException(
-                        "Received Package: {}".format(MSG_NAMES[ptype])
-                    )
+                    raise SSHException(f"Received Package: {MSG_NAMES[ptype]}")
             elif (
                 self.auth_method == "gssapi-keyex"
                 and self.transport.gss_kex_used
@@ -488,27 +471,21 @@ Error Message: {}
                 kexgss.set_username(self.username)
                 mic_token = kexgss.ssh_get_mic(self.transport.session_id)
                 m.add_string(mic_token)
-            elif self.auth_method == "none":
-                pass
-            else:
-                raise SSHException(
-                    'Unknown auth method "{}"'.format(self.auth_method)
-                )
+            elif self.auth_method != "none":
+                raise SSHException(f'Unknown auth method "{self.auth_method}"')
             self.transport._send_message(m)
         else:
-            self._log(
-                DEBUG, 'Service request "{}" accepted (?)'.format(service)
-            )
+            self._log(DEBUG, f'Service request "{service}" accepted (?)')
 
     def _send_auth_result(self, username, method, result):
         # okay, send result
         m = Message()
         if result == AUTH_SUCCESSFUL:
-            self._log(INFO, "Auth granted ({}).".format(method))
+            self._log(INFO, f"Auth granted ({method}).")
             m.add_byte(cMSG_USERAUTH_SUCCESS)
             self.authenticated = True
         else:
-            self._log(INFO, "Auth rejected ({}).".format(method))
+            self._log(INFO, f"Auth rejected ({method}).")
             m.add_byte(cMSG_USERAUTH_FAILURE)
             m.add_string(
                 self.transport.server_object.get_allowed_auths(username)
@@ -554,10 +531,9 @@ Error Message: {}
         method = m.get_text()
         self._log(
             DEBUG,
-            "Auth request (type={}) service={}, username={}".format(
-                method, service, username
-            ),
+            f"Auth request (type={method}) service={service}, username={username}",
         )
+
         if service != "ssh-connection":
             self._disconnect_service_not_available()
             return
@@ -610,7 +586,7 @@ Error Message: {}
             try:
                 key = self._generate_key_from_request(algorithm, keyblob)
             except SSHException as e:
-                self._log(INFO, "Auth rejected: public key: {}".format(str(e)))
+                self._log(INFO, f"Auth rejected: public key: {str(e)}")
                 key = None
             except Exception as e:
                 msg = (
@@ -717,9 +693,7 @@ Error Message: {}
         self._send_auth_result(username, method, result)
 
     def _parse_userauth_success(self, m):
-        self._log(
-            INFO, "Authentication ({}) successful!".format(self.auth_method)
-        )
+        self._log(INFO, f"Authentication ({self.auth_method}) successful!")
         self.authenticated = True
         self.transport._auth_trigger()
         if self.auth_event is not None:
@@ -727,26 +701,18 @@ Error Message: {}
 
     def _parse_userauth_failure(self, m):
         authlist = m.get_list()
-        partial = m.get_boolean()
-        if partial:
+        if partial := m.get_boolean():
             self._log(INFO, "Authentication continues...")
-            self._log(DEBUG, "Methods: " + str(authlist))
+            self._log(DEBUG, f"Methods: {str(authlist)}")
             self.transport.saved_exception = PartialAuthentication(authlist)
         elif self.auth_method not in authlist:
-            for msg in (
-                "Authentication type ({}) not permitted.".format(
-                    self.auth_method
-                ),
-                "Allowed methods: {}".format(authlist),
-            ):
+            for msg in (f"Authentication type ({self.auth_method}) not permitted.", f"Allowed methods: {authlist}"):
                 self._log(DEBUG, msg)
             self.transport.saved_exception = BadAuthenticationType(
                 "Bad authentication type", authlist
             )
         else:
-            self._log(
-                INFO, "Authentication ({}) failed.".format(self.auth_method)
-            )
+            self._log(INFO, f"Authentication ({self.auth_method}) failed.")
         self.authenticated = False
         self.username = None
         if self.auth_event is not None:
@@ -755,7 +721,7 @@ Error Message: {}
     def _parse_userauth_banner(self, m):
         banner = m.get_string()
         self.banner = banner
-        self._log(INFO, "Auth banner: {}".format(banner))
+        self._log(INFO, f"Auth banner: {banner}")
         # who cares.
 
     def _parse_userauth_info_request(self, m):
@@ -765,9 +731,7 @@ Error Message: {}
         instructions = m.get_text()
         m.get_binary()  # lang
         prompts = m.get_int()
-        prompt_list = []
-        for i in range(prompts):
-            prompt_list.append((m.get_text(), m.get_boolean()))
+        prompt_list = [(m.get_text(), m.get_boolean()) for _ in range(prompts)]
         response_list = self.interactive_handler(
             title, instructions, prompt_list
         )
@@ -783,9 +747,7 @@ Error Message: {}
         if not self.transport.server_mode:
             raise SSHException("Illegal info response from server")
         n = m.get_int()
-        responses = []
-        for i in range(n):
-            responses.append(m.get_text())
+        responses = [m.get_text() for _ in range(n)]
         result = self.transport.server_object.check_auth_interactive_response(
             responses
         )
@@ -799,8 +761,8 @@ Error Message: {}
 
     def _handle_local_gss_failure(self, e):
         self.transport.saved_exception = e
-        self._log(DEBUG, "GSSAPI failure: {}".format(e))
-        self._log(INFO, "Authentication ({}) failed.".format(self.auth_method))
+        self._log(DEBUG, f"GSSAPI failure: {e}")
+        self._log(INFO, f"Authentication ({self.auth_method}) failed.")
         self.authenticated = False
         self.username = None
         if self.auth_event is not None:

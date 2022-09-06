@@ -141,9 +141,9 @@ class SSHConfig(object):
             # Parse line into key, value
             match = re.match(self.SETTINGS_REGEX, line)
             if not match:
-                raise ConfigParseError("Unparsable line {}".format(line))
-            key = match.group(1).lower()
-            value = match.group(2)
+                raise ConfigParseError(f"Unparsable line {line}")
+            key = match[1].lower()
+            value = match[2]
 
             # Host keyword triggers switch to new block/context
             if key in ("host", "match"):
@@ -287,7 +287,7 @@ class SSHConfig(object):
         """
         found = False
         for domain in domains:
-            candidate = "{}.{}".format(hostname, domain)
+            candidate = f"{hostname}.{domain}"
             family_specific = _addressfamily_host_lookup(candidate, options)
             if family_specific is not None:
                 # TODO: would we want to dig deeper into other results? e.g. to
@@ -422,15 +422,9 @@ class SSHConfig(object):
         if key != "hostname":
             configured_hostname = config.get("hostname", configured_hostname)
         # Ditto the rest of the source values
-        if "port" in config:
-            port = config["port"]
-        else:
-            port = SSH_PORT
+        port = config["port"] if "port" in config else SSH_PORT
         user = getpass.getuser()
-        if "user" in config:
-            remoteuser = config["user"]
-        else:
-            remoteuser = user
+        remoteuser = config["user"] if "user" in config else user
         local_hostname = socket.gethostname().split(".")[0]
         local_fqdn = LazyFqdn(config, local_hostname)
         homedir = os.path.expanduser("~")
@@ -501,7 +495,7 @@ class SSHConfig(object):
         try:
             return shlex.split(host)
         except ValueError:
-            raise ConfigParseError("Unparsable host {}".format(host))
+            raise ConfigParseError(f"Unparsable host {host}")
 
     def _get_matches(self, match):
         """
@@ -524,9 +518,7 @@ class SSHConfig(object):
                 matches.append(match)
                 continue
             if not tokens:
-                raise ConfigParseError(
-                    "Missing parameter to Match '{}' keyword".format(type_)
-                )
+                raise ConfigParseError(f"Missing parameter to Match '{type_}' keyword")
             match["param"] = tokens.pop(0)
             matches.append(match)
         # Perform some (easier to do now than in the middle) validation that is
@@ -570,9 +562,7 @@ def _addressfamily_host_lookup(hostname, options):
     if address_family == "any":
         return
     try:
-        family = socket.AF_INET6
-        if address_family == "inet":
-            family = socket.AF_INET
+        family = socket.AF_INET if address_family == "inet" else socket.AF_INET6
         return socket.getaddrinfo(
             hostname,
             None,
@@ -676,9 +666,7 @@ class SSHConfigDict(dict):
         .. versionadded:: 2.5
         """
         val = self[key]
-        if isinstance(val, bool):
-            return val
-        return val.lower() == "yes"
+        return val if isinstance(val, bool) else val.lower() == "yes"
 
     def as_int(self, key):
         """

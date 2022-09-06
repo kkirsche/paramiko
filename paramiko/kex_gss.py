@@ -185,8 +185,6 @@ class KexGSSGroup1(object):
             self.transport._expect_packet(
                 MSG_KEXGSS_CONTINUE, MSG_KEXGSS_COMPLETE, MSG_KEXGSS_ERROR
             )
-        else:
-            pass
 
     def _parse_kexgss_complete(self, m):
         """
@@ -202,11 +200,7 @@ class KexGSSGroup1(object):
         if (self.f < 1) or (self.f > self.P - 1):
             raise SSHException('Server kex "f" is out of range')
         mic_token = m.get_string()
-        # This must be TRUE, if there is a GSS-API token in this message.
-        bool = m.get_boolean()
-        srv_token = None
-        if bool:
-            srv_token = m.get_string()
+        srv_token = m.get_string() if (bool := m.get_boolean()) else None
         K = pow(self.f, self.x, self.P)
         # okay, build up the hash H of
         # (V_C || V_S || I_C || I_S || K_S || e || f || K)
@@ -227,9 +221,7 @@ class KexGSSGroup1(object):
             self.kexgss.ssh_init_sec_context(
                 target=self.gss_host, recv_token=srv_token
             )
-            self.kexgss.ssh_check_mic(mic_token, H)
-        else:
-            self.kexgss.ssh_check_mic(mic_token, H)
+        self.kexgss.ssh_check_mic(mic_token, H)
         self.transport.gss_kex_used = True
         self.transport._activate_outbound()
 
@@ -444,11 +436,9 @@ class KexGSSGex(object):
         if pack is None:
             raise SSHException("Can't do server-side gex with no modulus pack")
         self.transport._log(
-            DEBUG,  # noqa
-            "Picking p ({} <= {} <= {} bits)".format(
-                minbits, preferredbits, maxbits
-            ),
+            DEBUG, f"Picking p ({minbits} <= {preferredbits} <= {maxbits} bits)"
         )
+
         self.g, self.p = pack.get_modulus(minbits, preferredbits, maxbits)
         m = Message()
         m.add_byte(c_MSG_KEXGSS_GROUP)
@@ -469,12 +459,10 @@ class KexGSSGex(object):
         bitlen = util.bit_length(self.p)
         if (bitlen < 1024) or (bitlen > 8192):
             raise SSHException(
-                "Server-generated gex p (don't ask) is out of range "
-                "({} bits)".format(bitlen)
+                f"Server-generated gex p (don't ask) is out of range ({bitlen} bits)"
             )
-        self.transport._log(
-            DEBUG, "Got server p ({} bits)".format(bitlen)
-        )  # noqa
+
+        self.transport._log(DEBUG, f"Got server p ({bitlen} bits)")
         self._generate_x()
         # now compute e = g^x mod p
         self.e = pow(self.g, self.x, self.p)
@@ -584,8 +572,6 @@ class KexGSSGex(object):
             self.transport._expect_packet(
                 MSG_KEXGSS_CONTINUE, MSG_KEXGSS_COMPLETE, MSG_KEXGSS_ERROR
             )
-        else:
-            pass
 
     def _parse_kexgss_complete(self, m):
         """
@@ -597,11 +583,7 @@ class KexGSSGex(object):
             self.transport.host_key = NullHostKey()
         self.f = m.get_mpint()
         mic_token = m.get_string()
-        # This must be TRUE, if there is a GSS-API token in this message.
-        bool = m.get_boolean()
-        srv_token = None
-        if bool:
-            srv_token = m.get_string()
+        srv_token = m.get_string() if (bool := m.get_boolean()) else None
         if (self.f < 1) or (self.f > self.p - 1):
             raise SSHException('Server kex "f" is out of range')
         K = pow(self.f, self.x, self.p)
@@ -631,9 +613,7 @@ class KexGSSGex(object):
             self.kexgss.ssh_init_sec_context(
                 target=self.gss_host, recv_token=srv_token
             )
-            self.kexgss.ssh_check_mic(mic_token, H)
-        else:
-            self.kexgss.ssh_check_mic(mic_token, H)
+        self.kexgss.ssh_check_mic(mic_token, H)
         self.transport.gss_kex_used = True
         self.transport._activate_outbound()
 

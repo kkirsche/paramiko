@@ -50,7 +50,7 @@ class _ECDSACurve(object):
         self.key_length = curve_class.key_size
 
         # Defined in RFC 5656 6.2
-        self.key_format_identifier = "ecdsa-sha2-" + self.nist_name
+        self.key_format_identifier = f"ecdsa-sha2-{self.nist_name}"
 
         # Defined in RFC 5656 6.2.1
         if self.key_length <= 256:
@@ -146,17 +146,13 @@ class ECDSAKey(PKey):
                 key_type
             )
             key_types = self._ECDSA_CURVES.get_key_format_identifier_list()
-            cert_types = [
-                "{}-cert-v01@openssh.com".format(x) for x in key_types
-            ]
+            cert_types = [f"{x}-cert-v01@openssh.com" for x in key_types]
             self._check_type_and_load_cert(
                 msg=msg, key_type=key_types, cert_type=cert_types
             )
             curvename = msg.get_text()
             if curvename != self.ecdsa_curve.nist_name:
-                raise SSHException(
-                    "Can't handle curve of type {}".format(curvename)
-                )
+                raise SSHException(f"Can't handle curve of type {curvename}")
 
             pointinfo = msg.get_binary()
             try:
@@ -301,13 +297,13 @@ class ECDSAKey(PKey):
                 curve_name = msg.get_text()
                 verkey = msg.get_binary()  # noqa: F841
                 sigkey = msg.get_mpint()
-                name = "ecdsa-sha2-" + curve_name
-                curve = self._ECDSA_CURVES.get_by_key_format_identifier(name)
-                if not curve:
+                name = f"ecdsa-sha2-{curve_name}"
+                if curve := self._ECDSA_CURVES.get_by_key_format_identifier(name):
+                    key = ec.derive_private_key(
+                        sigkey, curve.curve_class(), default_backend()
+                    )
+                else:
                     raise SSHException("Invalid key curve identifier")
-                key = ec.derive_private_key(
-                    sigkey, curve.curve_class(), default_backend()
-                )
             except Exception as e:
                 # PKey._read_private_key_openssh() should check or return
                 # keytype - parsing could fail for any reason due to wrong type

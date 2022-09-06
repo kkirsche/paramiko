@@ -153,7 +153,7 @@ class KeyTest(unittest.TestCase):
                 fh.readline()[:-1], "-----BEGIN RSA PRIVATE KEY-----"
             )
             self.assertEqual(fh.readline()[:-1], "Proc-Type: 4,ENCRYPTED")
-            self.assertEqual(fh.readline()[0:10], "DEK-Info: ")
+            self.assertEqual(fh.readline()[:10], "DEK-Info: ")
 
     def test_generate_key_bytes(self):
         key = util.generate_key_bytes(md5, x1234, "happy birthday", 30)
@@ -550,7 +550,7 @@ class KeyTest(unittest.TestCase):
         # Read an existing encrypted private key
         file_ = _support("test_rsa_password.key")
         password = "television"
-        newfile = file_ + ".new"
+        newfile = f"{file_}.new"
         newpassword = "radio"
         key = RSAKey(filename=file_, password=password)
         # Write out a newly re-encrypted copy with a new password.
@@ -663,7 +663,7 @@ class KeyTest(unittest.TestCase):
         # Read an existing encrypted private key
         file_ = _support("test_rsa_password.key")
         password = "television"
-        newfile = file_ + ".new"
+        newfile = f"{file_}.new"
         newpassword = "radio"
         key = RSAKey(filename=file_, password=password)
         # Write out a newly re-encrypted copy with a new password.
@@ -717,7 +717,7 @@ class KeyTest(unittest.TestCase):
         password = "television"
         newpassword = "radio"
         source = _support("test_ecdsa_384.key")
-        new = source + ".new"
+        new = f"{source}.new"
         # Mock setup
         os_.path.exists.return_value = exists
         # Attach os flag values to mock
@@ -752,7 +752,7 @@ class KeyTest(unittest.TestCase):
         password = "television"
         newpassword = "radio"
         source = _support("test_ecdsa_384.key")
-        new = source + ".new"
+        new = f"{source}.new"
         # Load fixture key
         key = ECDSAKey(filename=source, password=password)
         try:

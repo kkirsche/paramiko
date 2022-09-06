@@ -97,10 +97,8 @@ class ModulusPack(object):
         # call cnn!) where it understates the bit lengths of these primes by 1.
         # this is okay.
         bl = util.bit_length(modulus)
-        if (bl != size) and (bl != size + 1):
-            self.discarded.append(
-                (modulus, "incorrectly reported bit length {}".format(size))
-            )
+        if bl not in [size, size + 1]:
+            self.discarded.append((modulus, f"incorrectly reported bit length {size}"))
             return
         if bl not in self.pack:
             self.pack[bl] = []

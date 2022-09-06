@@ -46,16 +46,13 @@ class NullServer(paramiko.ServerInterface):
         return paramiko.AUTH_FAILED
 
     def enable_auth_gssapi(self):
-        UseGSSAPI = True
-        return UseGSSAPI
+        return True
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED
 
     def check_channel_exec_request(self, channel, command):
-        if command != b"yes":
-            return False
-        return True
+        return command == b"yes"
 
 
 @needs_gssapi

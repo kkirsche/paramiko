@@ -237,7 +237,7 @@ class DSSKey(PKey):
             try:
                 keylist = BER(data).decode()
             except BERException as e:
-                raise SSHException("Unable to parse key file: {}".format(e))
+                raise SSHException(f"Unable to parse key file: {e}")
         elif pkformat == self._PRIVATE_KEY_FORMAT_OPENSSH:
             keylist = self._uint32_cstruct_unpack(data, "iiiii")
             keylist = [0] + list(keylist)

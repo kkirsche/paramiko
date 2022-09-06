@@ -80,74 +80,29 @@ class GSSAPITest(KerberosTestCase):
         gss_ctxt_status = False
         mic_msg = b"G'day Mate!"
 
-        if _API == "PYTHON-GSSAPI-OLD":
-            if self.server_mode:
-                gss_flags = (
-                    gssapi.C_PROT_READY_FLAG,
-                    gssapi.C_INTEG_FLAG,
-                    gssapi.C_MUTUAL_FLAG,
-                    gssapi.C_DELEG_FLAG,
-                )
-            else:
-                gss_flags = (
-                    gssapi.C_PROT_READY_FLAG,
-                    gssapi.C_INTEG_FLAG,
-                    gssapi.C_DELEG_FLAG,
-                )
-            # Initialize a GSS-API context.
-            ctx = gssapi.Context()
-            ctx.flags = gss_flags
-            krb5_oid = gssapi.OID.mech_from_string(self.krb5_mech)
-            target_name = gssapi.Name(
-                "host@" + self.targ_name, gssapi.C_NT_HOSTBASED_SERVICE
-            )
-            gss_ctxt = gssapi.InitContext(
-                peer_name=target_name, mech_type=krb5_oid, req_flags=ctx.flags
-            )
-            if self.server_mode:
-                c_token = gss_ctxt.step(c_token)
-                gss_ctxt_status = gss_ctxt.established
-                self.assertEquals(False, gss_ctxt_status)
-                # Accept a GSS-API context.
-                gss_srv_ctxt = gssapi.AcceptContext()
-                s_token = gss_srv_ctxt.step(c_token)
-                gss_ctxt_status = gss_srv_ctxt.established
-                self.assertNotEquals(None, s_token)
-                self.assertEquals(True, gss_ctxt_status)
-                # Establish the client context
-                c_token = gss_ctxt.step(s_token)
-                self.assertEquals(None, c_token)
-            else:
-                while not gss_ctxt.established:
-                    c_token = gss_ctxt.step(c_token)
-                self.assertNotEquals(None, c_token)
-            # Build MIC
-            mic_token = gss_ctxt.get_mic(mic_msg)
-
-            if self.server_mode:
-                # Check MIC
-                status = gss_srv_ctxt.verify_mic(mic_msg, mic_token)
-                self.assertEquals(0, status)
-        elif _API == "PYTHON-GSSAPI-NEW":
-            if self.server_mode:
-                gss_flags = (
+        if _API == "PYTHON-GSSAPI-NEW":
+            gss_flags = (
+                (
                     gssapi.RequirementFlag.protection_ready,
                     gssapi.RequirementFlag.integrity,
                     gssapi.RequirementFlag.mutual_authentication,
                     gssapi.RequirementFlag.delegate_to_peer,
                 )
-            else:
-                gss_flags = (
+                if self.server_mode
+                else (
                     gssapi.RequirementFlag.protection_ready,
                     gssapi.RequirementFlag.integrity,
                     gssapi.RequirementFlag.delegate_to_peer,
                 )
+            )
+
             # Initialize a GSS-API context.
             krb5_oid = gssapi.MechType.kerberos
             target_name = gssapi.Name(
-                "host@" + self.targ_name,
+                f"host@{self.targ_name}",
                 name_type=gssapi.NameType.hostbased_service,
             )
+
             gss_ctxt = gssapi.SecurityContext(
                 name=target_name,
                 flags=gss_flags,
@@ -178,6 +133,57 @@ class GSSAPITest(KerberosTestCase):
                 # Check MIC
                 status = gss_srv_ctxt.verify_signature(mic_msg, mic_token)
                 self.assertEquals(0, status)
+        elif _API == "PYTHON-GSSAPI-OLD":
+            gss_flags = (
+                (
+                    gssapi.C_PROT_READY_FLAG,
+                    gssapi.C_INTEG_FLAG,
+                    gssapi.C_MUTUAL_FLAG,
+                    gssapi.C_DELEG_FLAG,
+                )
+                if self.server_mode
+                else (
+                    gssapi.C_PROT_READY_FLAG,
+                    gssapi.C_INTEG_FLAG,
+                    gssapi.C_DELEG_FLAG,
+                )
+            )
+
+            # Initialize a GSS-API context.
+            ctx = gssapi.Context()
+            ctx.flags = gss_flags
+            krb5_oid = gssapi.OID.mech_from_string(self.krb5_mech)
+            target_name = gssapi.Name(
+                f"host@{self.targ_name}", gssapi.C_NT_HOSTBASED_SERVICE
+            )
+
+            gss_ctxt = gssapi.InitContext(
+                peer_name=target_name, mech_type=krb5_oid, req_flags=ctx.flags
+            )
+            if self.server_mode:
+                c_token = gss_ctxt.step(c_token)
+                gss_ctxt_status = gss_ctxt.established
+                self.assertEquals(False, gss_ctxt_status)
+                # Accept a GSS-API context.
+                gss_srv_ctxt = gssapi.AcceptContext()
+                s_token = gss_srv_ctxt.step(c_token)
+                gss_ctxt_status = gss_srv_ctxt.established
+                self.assertNotEquals(None, s_token)
+                self.assertEquals(True, gss_ctxt_status)
+                # Establish the client context
+                c_token = gss_ctxt.step(s_token)
+                self.assertEquals(None, c_token)
+            else:
+                while not gss_ctxt.established:
+                    c_token = gss_ctxt.step(c_token)
+                self.assertNotEquals(None, c_token)
+            # Build MIC
+            mic_token = gss_ctxt.get_mic(mic_msg)
+
+            if self.server_mode:
+                # Check MIC
+                status = gss_srv_ctxt.verify_mic(mic_msg, mic_token)
+                self.assertEquals(0, status)
         else:
             gss_flags = (
                 sspicon.ISC_REQ_INTEGRITY
@@ -185,7 +191,7 @@ class GSSAPITest(KerberosTestCase):
                 | sspicon.ISC_REQ_DELEGATE
             )
             # Initialize a GSS-API context.
-            target_name = "host/" + socket.getfqdn(self.targ_name)
+            target_name = f"host/{socket.getfqdn(self.targ_name)}"
             gss_ctxt = sspi.ClientAuth(
                 "Kerberos", scflags=gss_flags, targetspn=target_name
             )

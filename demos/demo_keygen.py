@@ -59,7 +59,6 @@ def progress(arg=None):
 
 if __name__ == "__main__":
 
-    phrase = None
     pfunc = None
 
     parser = OptionParser(usage=usage)
@@ -129,9 +128,7 @@ if __name__ == "__main__":
     for o in list(default_values.keys()):
         globals()[o] = getattr(options, o, default_values[o.lower()])
 
-    if options.newphrase:
-        phrase = getattr(options, "newphrase")
-
+    phrase = getattr(options, "newphrase") if options.newphrase else None
     if options.verbose:
         pfunc = progress
         sys.stdout.write(
@@ -144,9 +141,7 @@ if __name__ == "__main__":
         raise SSHException("DSA Keys must be 1024 bits")
 
     if ktype not in key_dispatch_table:
-        raise SSHException(
-            "Unknown %s algorithm to generate keys pair" % ktype
-        )
+        raise SSHException(f"Unknown {ktype} algorithm to generate keys pair")
 
     # generating private key
     prv = key_dispatch_table[ktype].generate(bits=bits, progress_func=pfunc)
@@ -154,10 +149,10 @@ if __name__ == "__main__":
 
     # generating public key
     pub = key_dispatch_table[ktype](filename=filename, password=phrase)
-    with open("%s.pub" % filename, "w") as f:
-        f.write("%s %s" % (pub.get_name(), pub.get_base64()))
+    with open(f"{filename}.pub", "w") as f:
+        f.write(f"{pub.get_name()} {pub.get_base64()}")
         if options.comment:
-            f.write(" %s" % comment)
+            f.write(f" {comment}")
 
     if options.verbose:
         print("done.")

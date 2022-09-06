@@ -164,9 +164,7 @@ class ProxyCommandFailure(SSHException):
         self.error = error
 
     def __str__(self):
-        return 'ProxyCommand("{}") returned nonzero exit status: {}'.format(
-            self.command, self.error
-        )
+        return f'ProxyCommand("{self.command}") returned nonzero exit status: {self.error}'
 
 
 class NoValidConnectionsError(socket.error):

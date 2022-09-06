@@ -282,7 +282,7 @@ class SFTPServerInterface(object):
         if os.path.isabs(path):
             out = os.path.normpath(path)
         else:
-            out = os.path.normpath("/" + path)
+            out = os.path.normpath(f"/{path}")
         if sys.platform == "win32":
             # on windows, normalize backslashes to sftp/posix format
             out = out.replace("\\", "/")

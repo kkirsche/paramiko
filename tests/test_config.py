@@ -204,9 +204,7 @@ Host test
     ProxyCommand    ssh -F ~/.ssh/test_config bastion nc %h %p
 """
         )
-        expected = "ssh -F {}/.ssh/test_config bastion nc test 22".format(
-            expanduser("~")
-        )
+        expected = f'ssh -F {expanduser("~")}/.ssh/test_config bastion nc test 22'
         got = config.lookup("test")["proxycommand"]
         assert got == expected
 

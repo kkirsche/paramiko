@@ -87,9 +87,7 @@ class NullServer(ServerInterface):
         self.allowed_keys = allowed_keys if allowed_keys is not None else []
 
     def get_allowed_auths(self, username):
-        if username == "slowdive":
-            return "publickey,password"
-        return "publickey"
+        return "publickey,password" if username == "slowdive" else "publickey"
 
     def check_auth_password(self, username, password):
         if (username == "slowdive") and (password == "pygmalion"):
@@ -97,9 +95,7 @@ class NullServer(ServerInterface):
         return AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
-        if key in self.allowed_keys:
-            return AUTH_SUCCESSFUL
-        return AUTH_FAILED
+        return AUTH_SUCCESSFUL if key in self.allowed_keys else AUTH_FAILED
 
     def check_channel_request(self, kind, chanid):
         if kind == "bogus":
@@ -107,9 +103,7 @@ class NullServer(ServerInterface):
         return OPEN_SUCCEEDED
 
     def check_channel_exec_request(self, channel, command):
-        if command != b"yes":
-            return False
-        return True
+        return command == b"yes"
 
     def check_channel_shell_request(self, channel):
         return True
@@ -439,7 +433,7 @@ class TransportTest(unittest.TestCase):
         schan.send("hello\n")
 
         # something should be ready now (give it 1 second to appear)
-        for i in range(10):
+        for _ in range(10):
             r, w, e = select.select([chan], [], [], 0.1)
             if chan in r:
                 break
@@ -459,7 +453,7 @@ class TransportTest(unittest.TestCase):
         schan.close()
 
         # detect eof?
-        for i in range(10):
+        for _ in range(10):
             r, w, e = select.select([chan], [], [], 0.1)
             if chan in r:
                 break
@@ -487,12 +481,12 @@ class TransportTest(unittest.TestCase):
         schan = self.ts.accept(1.0)
 
         self.assertEqual(self.tc.H, self.tc.session_id)
-        for i in range(20):
+        for _ in range(20):
             chan.send("x" * 1024)
         chan.close()
 
         # allow a few seconds for the rekeying to complete
-        for i in range(50):
+        for _ in range(50):
             if self.tc.H != self.tc.session_id:
                 break
             time.sleep(0.1)
@@ -654,7 +648,7 @@ class TransportTest(unittest.TestCase):
         schan.send_stderr("hello\n")
 
         # something should be ready now (give it 1 second to appear)
-        for i in range(10):
+        for _ in range(10):
             r, w, e = select.select([chan], [], [], 0.1)
             if chan in r:
                 break
@@ -1122,11 +1116,12 @@ class AlgorithmDisablingTests(unittest.TestCase):
         assert t.preferred_ciphers == t._preferred_ciphers
         assert t.preferred_macs == t._preferred_macs
         assert t.preferred_keys == tuple(
-            t._preferred_keys
-            + tuple(
-                "{}-cert-v01@openssh.com".format(x) for x in t._preferred_keys
+            (
+                t._preferred_keys
+                + tuple(f"{x}-cert-v01@openssh.com" for x in t._preferred_keys)
             )
         )
+
         assert t.preferred_kex == t._preferred_kex
 
     def test_preferred_lists_filter_disabled_algorithms(self):

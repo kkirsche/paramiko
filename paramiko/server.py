@@ -262,9 +262,7 @@ class ServerInterface(object):
                  log in as a user.
         :see: http://www.unix.com/man-page/all/3/krb5_kuserok/
         """
-        if gss_authenticated == AUTH_SUCCESSFUL:
-            return AUTH_SUCCESSFUL
-        return AUTH_FAILED
+        return AUTH_SUCCESSFUL if gss_authenticated == AUTH_SUCCESSFUL else AUTH_FAILED
 
     def check_auth_gssapi_keyex(
         self, username, gss_authenticated=AUTH_FAILED, cc_file=None
@@ -294,9 +292,7 @@ class ServerInterface(object):
                  to log in as a user.
         :see: http://www.unix.com/man-page/all/3/krb5_kuserok/
         """
-        if gss_authenticated == AUTH_SUCCESSFUL:
-            return AUTH_SUCCESSFUL
-        return AUTH_FAILED
+        return AUTH_SUCCESSFUL if gss_authenticated == AUTH_SUCCESSFUL else AUTH_FAILED
 
     def enable_auth_gssapi(self):
         """
@@ -307,8 +303,7 @@ class ServerInterface(object):
         :returns bool: Whether GSSAPI authentication is enabled.
         :see: `.ssh_gss`
         """
-        UseGSSAPI = False
-        return UseGSSAPI
+        return False
 
     def check_port_forward_request(self, address, port):
         """
@@ -677,17 +672,13 @@ class SubsystemHandler(threading.Thread):
 
     def _run(self):
         try:
-            self.__transport._log(
-                DEBUG, "Starting handler for subsystem {}".format(self.__name)
-            )
+            self.__transport._log(DEBUG, f"Starting handler for subsystem {self.__name}")
             self.start_subsystem(self.__name, self.__transport, self.__channel)
         except Exception as e:
             self.__transport._log(
-                ERROR,
-                'Exception in subsystem handler for "{}": {}'.format(
-                    self.__name, e
-                ),
+                ERROR, f'Exception in subsystem handler for "{self.__name}": {e}'
             )
+
             self.__transport._log(ERROR, util.tb_strings())
         try:
             self.finish_subsystem()

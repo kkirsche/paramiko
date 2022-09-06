@@ -82,7 +82,7 @@ class SFTPAttributes(object):
         return attr
 
     def __repr__(self):
-        return "<SFTPAttributes: {}>".format(self._debug_str())
+        return f"<SFTPAttributes: {self._debug_str()}>"
 
     # ...internals...
     @classmethod
@@ -109,7 +109,7 @@ class SFTPAttributes(object):
             self.st_mtime = msg.get_int()
         if self._flags & self.FLAG_EXTENDED:
             count = msg.get_int()
-            for i in range(count):
+            for _ in range(count):
                 self.attr[msg.get_string()] = msg.get_string()
 
     def _pack(self, msg):
@@ -146,13 +146,13 @@ class SFTPAttributes(object):
     def _debug_str(self):
         out = "[ "
         if self.st_size is not None:
-            out += "size={} ".format(self.st_size)
+            out += f"size={self.st_size} "
         if (self.st_uid is not None) and (self.st_gid is not None):
-            out += "uid={} gid={} ".format(self.st_uid, self.st_gid)
+            out += f"uid={self.st_uid} gid={self.st_gid} "
         if self.st_mode is not None:
-            out += "mode=" + oct(self.st_mode) + " "
+            out += f"mode={oct(self.st_mode)} "
         if (self.st_atime is not None) and (self.st_mtime is not None):
-            out += "atime={} mtime={} ".format(self.st_atime, self.st_mtime)
+            out += f"atime={self.st_atime} mtime={self.st_mtime} "
         for k, v in self.attr.items():
             out += '"{}"={!r} '.format(str(k), v)
         out += "]"
@@ -163,10 +163,7 @@ class SFTPAttributes(object):
         if suid:
             suid = 2
         out = "-r"[n >> 2] + "-w"[(n >> 1) & 1]
-        if sticky:
-            out += "-xTt"[suid + (n & 1)]
-        else:
-            out += "-xSs"[suid + (n & 1)]
+        out += "-xTt"[suid + (n & 1)] if sticky else "-xSs"[suid + (n & 1)]
         return out
 
     def _as_text(self):

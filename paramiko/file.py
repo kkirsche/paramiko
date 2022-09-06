@@ -105,10 +105,10 @@ class BufferedFile(ClosingContextManager):
 
             :returns: a line (`str`) read from the file.
             """
-            line = self.readline()
-            if not line:
+            if line := self.readline():
+                return line
+            else:
                 raise StopIteration
-            return line
 
     else:
 
@@ -122,10 +122,10 @@ class BufferedFile(ClosingContextManager):
 
             :returns: a line (`str`) read from the file.
             """
-            line = self.readline()
-            if not line:
+            if line := self.readline():
+                return line
+            else:
                 raise StopIteration
-            return line
 
     def readable(self):
         """
@@ -317,11 +317,7 @@ class BufferedFile(ClosingContextManager):
         # if the string was truncated, _rbuffer needs to have the string after
         # the newline character plus the truncated part of the line we stored
         # earlier in _rbuffer
-        if truncated:
-            self._rbuffer = line[xpos:] + self._rbuffer
-        else:
-            self._rbuffer = line[xpos:]
-
+        self._rbuffer = line[xpos:] + self._rbuffer if truncated else line[xpos:]
         lf = line[pos:xpos]
         line = line[:pos] + linefeed_byte
         if (len(self._rbuffer) == 0) and (lf == cr_byte):
@@ -481,10 +477,7 @@ class BufferedFile(ClosingContextManager):
         """
         # set bufsize in any event, because it's used for readline().
         self._bufsize = self._DEFAULT_BUFSIZE
-        if bufsize < 0:
-            # do no buffering by default, because otherwise writes will get
-            # buffered in a way that will probably confuse people.
-            bufsize = 0
+        bufsize = max(bufsize, 0)
         if bufsize == 1:
             # apparently, line buffering only affects writes.  reads are only
             # buffered if you call readline (directly or indirectly: iterating

@@ -34,7 +34,7 @@ def needs_builtin(name):
     """
     Skip decorated test if builtin name does not exist.
     """
-    reason = "Test requires a builtin '{}'".format(name)
+    reason = f"Test requires a builtin '{name}'"
     return pytest.mark.skipif(not hasattr(builtins, name), reason=reason)
 
 
@@ -125,7 +125,7 @@ def k5shell(args=None):
     atexit.register(k5.stop)
     os.environ.update(k5.env)
     for n in ("realm", "user_princ", "hostname"):
-        os.environ["K5TEST_" + n.upper()] = getattr(k5, n)
+        os.environ[f"K5TEST_{n.upper()}"] = getattr(k5, n)
 
     if not args:
         args = sys.argv[1:]

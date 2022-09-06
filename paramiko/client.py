@@ -145,11 +145,7 @@ class SSHClient(ClosingContextManager):
         with open(filename, "w") as f:
             for hostname, keys in self._host_keys.items():
                 for keytype, key in keys.items():
-                    f.write(
-                        "{} {} {}\n".format(
-                            hostname, keytype, key.get_base64()
-                        )
-                    )
+                    f.write(f"{hostname} {keytype} {key.get_base64()}\n")
 
     def get_host_keys(self):
         """
@@ -392,10 +388,7 @@ class SSHClient(ClosingContextManager):
         if auth_timeout is not None:
             t.auth_timeout = auth_timeout
 
-        if port == SSH_PORT:
-            server_hostkey_name = hostname
-        else:
-            server_hostkey_name = "[{}]:{}".format(hostname, port)
+        server_hostkey_name = hostname if port == SSH_PORT else f"[{hostname}]:{port}"
         our_server_keys = None
 
         our_server_keys = self._system_host_keys.get(server_hostkey_name)
@@ -593,14 +586,12 @@ class SSHClient(ClosingContextManager):
         # TODO: change this to 'Loading' instead of 'Trying' sometime; probably
         # when #387 is released, since this is a critical log message users are
         # likely testing/filtering for (bah.)
-        msg = "Trying discovered key {} in {}".format(
-            hexlify(key.get_fingerprint()), key_path
-        )
+        msg = f"Trying discovered key {hexlify(key.get_fingerprint())} in {key_path}"
         self._log(DEBUG, msg)
         # Attempt to load cert if it exists.
         if os.path.isfile(cert_path):
             key.load_certificate(cert_path)
-            self._log(DEBUG, "Adding public certificate {}".format(cert_path))
+            self._log(DEBUG, f"Adding public certificate {cert_path}")
         return key
 
     def _auth(
@@ -660,12 +651,7 @@ class SSHClient(ClosingContextManager):
 
         if pkey is not None:
             try:
-                self._log(
-                    DEBUG,
-                    "Trying SSH key {}".format(
-                        hexlify(pkey.get_fingerprint())
-                    ),
-                )
+                self._log(DEBUG, f"Trying SSH key {hexlify(pkey.get_fingerprint())}")
                 allowed_types = set(
                     self._transport.auth_publickey(username, pkey)
                 )
@@ -699,7 +685,7 @@ class SSHClient(ClosingContextManager):
             for key in self._agent.get_keys():
                 try:
                     id_ = hexlify(key.get_fingerprint())
-                    self._log(DEBUG, "Trying SSH agent key {}".format(id_))
+                    self._log(DEBUG, f"Trying SSH agent key {id_}")
                     # for 2-factor auth a successfully auth'd key password
                     # will return an allowed 2fac auth method
                     allowed_types = set(
@@ -723,14 +709,12 @@ class SSHClient(ClosingContextManager):
             ]:
                 # ~/ssh/ is for windows
                 for directory in [".ssh", "ssh"]:
-                    full_path = os.path.expanduser(
-                        "~/{}/id_{}".format(directory, name)
-                    )
+                    full_path = os.path.expanduser(f"~/{directory}/id_{name}")
                     if os.path.isfile(full_path):
                         # TODO: only do this append if below did not run
                         keyfiles.append((keytype, full_path))
-                        if os.path.isfile(full_path + "-cert.pub"):
-                            keyfiles.append((keytype, full_path + "-cert.pub"))
+                        if os.path.isfile(f"{full_path}-cert.pub"):
+                            keyfiles.append((keytype, f"{full_path}-cert.pub"))
 
             if not look_for_keys:
                 keyfiles = []
@@ -807,9 +791,7 @@ class AutoAddPolicy(MissingHostKeyPolicy):
             client.save_host_keys(client._host_keys_filename)
         client._log(
             DEBUG,
-            "Adding {} host key for {}: {}".format(
-                key.get_name(), hostname, hexlify(key.get_fingerprint())
-            ),
+            f"Adding {key.get_name()} host key for {hostname}: {hexlify(key.get_fingerprint())}",
         )
 
 
@@ -822,10 +804,9 @@ class RejectPolicy(MissingHostKeyPolicy):
     def missing_host_key(self, client, hostname, key):
         client._log(
             DEBUG,
-            "Rejecting {} host key for {}: {}".format(
-                key.get_name(), hostname, hexlify(key.get_fingerprint())
-            ),
+            f"Rejecting {key.get_name()} host key for {hostname}: {hexlify(key.get_fingerprint())}",
         )
+
         raise SSHException(
             "Server {!r} not found in known_hosts".format(hostname)
         )
@@ -839,7 +820,5 @@ class WarningPolicy(MissingHostKeyPolicy):
 
     def missing_host_key(self, client, hostname, key):
         warnings.warn(
-            "Unknown {} host key for {}: {}".format(
-                key.get_name(), hostname, hexlify(key.get_fingerprint())
-            )
+            f"Unknown {key.get_name()} host key for {hostname}: {hexlify(key.get_fingerprint())}"
         )

@@ -414,10 +414,7 @@ class Transport(threading.Thread, ClosingContextManager):
             # convert "host:port" into (host, port)
             hl = sock.split(":", 1)
             self.hostname = hl[0]
-            if len(hl) == 1:
-                sock = (hl[0], 22)
-            else:
-                sock = (hl[0], int(hl[1]))
+            sock = (hl[0], 22) if len(hl) == 1 else (hl[0], int(hl[1]))
         if type(sock) is tuple:
             # connect to the given (host, port)
             hostname, port = sock
@@ -438,9 +435,7 @@ class Transport(threading.Thread, ClosingContextManager):
                     else:
                         break
             else:
-                raise SSHException(
-                    "Unable to connect to {}: {}".format(hostname, reason)
-                )
+                raise SSHException(f"Unable to connect to {hostname}: {reason}")
         # okay, normal socket-ish flow here...
         threading.Thread.__init__(self)
         self.daemon = True
@@ -451,7 +446,7 @@ class Transport(threading.Thread, ClosingContextManager):
 
         # negotiated crypto parameters
         self.packetizer = Packetizer(sock)
-        self.local_version = "SSH-" + self._PROTO_ID + "-" + self._CLIENT_ID
+        self.local_version = f"SSH-{self._PROTO_ID}-{self._CLIENT_ID}"
         self.remote_version = ""
         self.local_cipher = self.remote_cipher = ""
         self.local_kex_init = self.remote_kex_init = None
@@ -525,7 +520,7 @@ class Transport(threading.Thread, ClosingContextManager):
         self.subsystem_table = {}
 
     def _filter_algorithm(self, type_):
-        default = getattr(self, "_preferred_{}".format(type_))
+        default = getattr(self, f"_preferred_{type_}")
         return tuple(
             x
             for x in default
@@ -547,10 +542,7 @@ class Transport(threading.Thread, ClosingContextManager):
         # the logic pubkey auth does re: injecting/checking for certs at
         # runtime
         filtered = self._filter_algorithm("keys")
-        return tuple(
-            filtered
-            + tuple("{}-cert-v01@openssh.com".format(x) for x in filtered)
-        )
+        return tuple((filtered + tuple(f"{x}-cert-v01@openssh.com" for x in filtered)))
 
     @property
     def preferred_pubkeys(self):
@@ -569,7 +561,7 @@ class Transport(threading.Thread, ClosingContextManager):
         Returns a string representation of this object, for debugging.
         """
         id_ = hex(long(id(self)) & xffffffff)
-        out = "<paramiko.Transport at {}".format(id_)
+        out = f"<paramiko.Transport at {id_}"
         if not self.active:
             out += " (unconnected)"
         else:
@@ -579,9 +571,7 @@ class Transport(threading.Thread, ClosingContextManager):
                     self._cipher_info[self.local_cipher]["key-size"] * 8,
                 )
             if self.is_authenticated():
-                out += " (active; {} open channel(s))".format(
-                    len(self._channels)
-                )
+                out += f" (active; {len(self._channels)} open channel(s))"
             elif self.initial_kex_done:
                 out += " (connected; awaiting auth)"
             else:
@@ -1024,7 +1014,7 @@ class Transport(threading.Thread, ClosingContextManager):
             m.add_int(chanid)
             m.add_int(window_size)
             m.add_int(max_packet_size)
-            if (kind == "forwarded-tcpip") or (kind == "direct-tcpip"):
+            if kind in ["forwarded-tcpip", "direct-tcpip"]:
                 m.add_string(dest_addr[0])
                 m.add_int(dest_addr[1])
                 m.add_string(src_addr[0])
@@ -1227,7 +1217,7 @@ class Transport(threading.Thread, ClosingContextManager):
         m.add_boolean(wait)
         if data is not None:
             m.add(*data)
-        self._log(DEBUG, 'Sending global request "{}"'.format(kind))
+        self._log(DEBUG, f'Sending global request "{kind}"')
         self._send_user_message(m)
         if not wait:
             return None
@@ -1255,11 +1245,7 @@ class Transport(threading.Thread, ClosingContextManager):
                 chan = self.server_accepts.pop(0)
             else:
                 self.server_accept_cv.wait(timeout)
-                if len(self.server_accepts) > 0:
-                    chan = self.server_accepts.pop(0)
-                else:
-                    # timeout
-                    chan = None
+                chan = self.server_accepts.pop(0) if len(self.server_accepts) > 0 else None
         finally:
             self.lock.release()
         return chan
@@ -1355,22 +1341,10 @@ class Transport(threading.Thread, ClosingContextManager):
                 or key.asbytes() != hostkey.asbytes()
             ):
                 self._log(DEBUG, "Bad host key from server")
-                self._log(
-                    DEBUG,
-                    "Expected: {}: {}".format(
-                        hostkey.get_name(), repr(hostkey.asbytes())
-                    ),
-                )
-                self._log(
-                    DEBUG,
-                    "Got     : {}: {}".format(
-                        key.get_name(), repr(key.asbytes())
-                    ),
-                )
+                self._log(DEBUG, f"Expected: {hostkey.get_name()}: {repr(hostkey.asbytes())}")
+                self._log(DEBUG, f"Got     : {key.get_name()}: {repr(key.asbytes())}")
                 raise SSHException("Bad host key from server")
-            self._log(
-                DEBUG, "Host key verified ({})".format(hostkey.get_name())
-            )
+            self._log(DEBUG, f"Host key verified ({hostkey.get_name()})")
 
         if (pkey is not None) or (password is not None) or gss_auth or gss_kex:
             if gss_auth:
@@ -1551,10 +1525,7 @@ class Transport(threading.Thread, ClosingContextManager):
             # we should never try to send the password unless we're on a secure
             # link
             raise SSHException("No existing session")
-        if event is None:
-            my_event = threading.Event()
-        else:
-            my_event = event
+        my_event = threading.Event() if event is None else event
         self.auth_handler = AuthHandler(self)
         self.auth_handler.auth_password(username, password, my_event)
         if event is not None:
@@ -1572,13 +1543,7 @@ class Transport(threading.Thread, ClosingContextManager):
                 def handler(title, instructions, fields):
                     if len(fields) > 1:
                         raise SSHException("Fallback authentication failed.")
-                    if len(fields) == 0:
-                        # for some reason, at least on os x, a 2nd request will
-                        # be made with zero fields requested.  maybe it's just
-                        # to try to fake out automated scripting of the exact
-                        # type we're doing here.  *shrug* :)
-                        return []
-                    return [password]
+                    return [] if len(fields) == 0 else [password]
 
                 return self.auth_interactive(username, handler)
             except SSHException:
@@ -1623,16 +1588,10 @@ class Transport(threading.Thread, ClosingContextManager):
         if (not self.active) or (not self.initial_kex_done):
             # we should never try to authenticate unless we're on a secure link
             raise SSHException("No existing session")
-        if event is None:
-            my_event = threading.Event()
-        else:
-            my_event = event
+        my_event = threading.Event() if event is None else event
         self.auth_handler = AuthHandler(self)
         self.auth_handler.auth_publickey(username, key, my_event)
-        if event is not None:
-            # caller wants to wait for event themselves
-            return []
-        return self.auth_handler.wait_for_response(my_event)
+        return self.auth_handler.wait_for_response(my_event) if event is None else []
 
     def auth_interactive(self, username, handler, submethods=""):
         """
@@ -1837,9 +1796,7 @@ class Transport(threading.Thread, ClosingContextManager):
             tuple.
         """
         gp = getattr(self.sock, "getpeername", None)
-        if gp is None:
-            return "unknown", 0
-        return gp()
+        return ("unknown", 0) if gp is None else gp()
 
     def stop_thread(self):
         self.active = False
@@ -1939,11 +1896,7 @@ class Transport(threading.Thread, ClosingContextManager):
         if key is None:
             raise SSHException("Unknown host key type")
         if not key.verify_ssh_sig(self.H, Message(sig)):
-            raise SSHException(
-                "Signature verification ({}) failed.".format(
-                    self.host_key_type
-                )
-            )  # noqa
+            raise SSHException(f"Signature verification ({self.host_key_type}) failed.")
         self.host_key = key
 
     def _compute_key(self, id, nbytes):
@@ -1978,17 +1931,13 @@ class Transport(threading.Thread, ClosingContextManager):
 
     def _get_cipher(self, name, key, iv, operation):
         if name not in self._cipher_info:
-            raise SSHException("Unknown client cipher " + name)
-        else:
-            cipher = Cipher(
-                self._cipher_info[name]["class"](key),
-                self._cipher_info[name]["mode"](iv),
-                backend=default_backend(),
-            )
-            if operation is self._ENCRYPT:
-                return cipher.encryptor()
-            else:
-                return cipher.decryptor()
+            raise SSHException(f"Unknown client cipher {name}")
+        cipher = Cipher(
+            self._cipher_info[name]["class"](key),
+            self._cipher_info[name]["mode"](iv),
+            backend=default_backend(),
+        )
+        return cipher.encryptor() if operation is self._ENCRYPT else cipher.decryptor()
 
     def _set_forward_agent_handler(self, handler):
         if handler is None:

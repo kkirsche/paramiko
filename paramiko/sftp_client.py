@@ -122,20 +122,13 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
         if type(sock) is Channel:
             # override default logger
             transport = self.sock.get_transport()
-            self.logger = util.get_logger(
-                transport.get_log_channel() + ".sftp"
-            )
+            self.logger = util.get_logger(f"{transport.get_log_channel()}.sftp")
             self.ultra_debug = transport.get_hexdump()
         try:
             server_version = self._send_version()
         except EOFError:
             raise SSHException("EOF during negotiation")
-        self._log(
-            INFO,
-            "Opened sftp connection (server version {})".format(
-                server_version
-            ),
-        )
+        self._log(INFO, f"Opened sftp connection (server version {server_version})")
 
     @classmethod
     def from_transport(cls, t, window_size=None, max_packet_size=None):
@@ -180,9 +173,7 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
             # before logging
             msg = msg.replace("%", "%%")
             super(SFTPClient, self)._log(
-                level,
-                "[chan %s] " + msg,
-                *([self.sock.get_name()] + list(args))
+                level, f"[chan %s] {msg}", *([self.sock.get_name()] + list(args))
             )
 
     def close(self):
@@ -250,11 +241,11 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
             if t != CMD_NAME:
                 raise SFTPError("Expected name response")
             count = msg.get_int()
-            for i in range(count):
+            for _ in range(count):
                 filename = msg.get_text()
                 longname = msg.get_text()
                 attr = SFTPAttributes._from_msg(msg, filename, longname)
-                if (filename != ".") and (filename != ".."):
+                if filename not in [".", ".."]:
                     filelist.append(attr)
         self._request(CMD_CLOSE, handle)
         return filelist
@@ -282,14 +273,14 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
 
         handle = msg.get_string()
 
-        nums = list()
+        nums = []
         while True:
             try:
                 # Send out a bunch of readdir requests so that we can read the
                 # responses later on Section 6.7 of the SSH file transfer RFC
                 # explains this
                 # http://filezilla-project.org/specs/draft-ietf-secsh-filexfer-02.txt
-                for i in range(read_aheads):
+                for _ in range(read_aheads):
                     num = self._async_request(type(None), CMD_READDIR, handle)
                     nums.append(num)
 
@@ -303,21 +294,20 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
                     t, pkt_data = self._read_packet()
                     msg = Message(pkt_data)
                     new_num = msg.get_int()
-                    if num == new_num:
-                        if t == CMD_STATUS:
-                            self._convert_status(msg)
+                    if num == new_num and t == CMD_STATUS:
+                        self._convert_status(msg)
                     count = msg.get_int()
-                    for i in range(count):
+                    for _ in range(count):
                         filename = msg.get_text()
                         longname = msg.get_text()
                         attr = SFTPAttributes._from_msg(
                             msg, filename, longname
                         )
-                        if (filename != ".") and (filename != ".."):
+                        if filename not in [".", ".."]:
                             yield attr
 
                 # If we've hit the end of our queued requests, reset nums.
-                nums = list()
+                nums = []
 
             except EOFError:
                 self._request(CMD_CLOSE, handle)
@@ -612,7 +602,7 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
         if count == 0:
             return None
         if count != 1:
-            raise SFTPError("Readlink returned {} results".format(count))
+            raise SFTPError(f"Readlink returned {count} results")
         return _to_unicode(msg.get_string())
 
     def normalize(self, path):
@@ -634,7 +624,7 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
             raise SFTPError("Expected name response")
         count = msg.get_int()
         if count != 1:
-            raise SFTPError("Realpath returned {} results".format(count))
+            raise SFTPError(f"Realpath returned {count} results")
         return msg.get_text()
 
     def chdir(self, path=None):
@@ -658,7 +648,7 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
             return
         if not stat.S_ISDIR(self.stat(path).st_mode):
             code = errno.ENOTDIR
-            raise SFTPError(code, "{}: {}".format(os.strerror(code), path))
+            raise SFTPError(code, f"{os.strerror(code)}: {path}")
         self._cwd = b(self.normalize(path))
 
     def getcwd(self):
@@ -719,9 +709,7 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
         if confirm:
             s = self.stat(remotepath)
             if s.st_size != size:
-                raise IOError(
-                    "size mismatch in put!  {} != {}".format(s.st_size, size)
-                )
+                raise IOError(f"size mismatch in put!  {s.st_size} != {size}")
         else:
             s = SFTPAttributes()
         return s
@@ -811,9 +799,7 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
             size = self.getfo(remotepath, fl, callback, prefetch)
         s = os.stat(localpath)
         if s.st_size != size:
-            raise IOError(
-                "size mismatch in get!  {} != {}".format(s.st_size, size)
-            )
+            raise IOError(f"size mismatch in get!  {s.st_size} != {size}")
 
     # ...internals...
 
@@ -851,7 +837,7 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
             try:
                 t, data = self._read_packet()
             except EOFError as e:
-                raise SSHException("Server connection dropped: {}".format(e))
+                raise SSHException(f"Server connection dropped: {e}")
             msg = Message(data)
             num = msg.get_int()
             self._lock.acquire()
@@ -859,7 +845,7 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
                 if num not in self._expecting:
                     # might be response for a file that was closed before
                     # responses came back
-                    self._log(DEBUG, "Unexpected response #{}".format(num))
+                    self._log(DEBUG, f"Unexpected response #{num}")
                     if waitfor is None:
                         # just doing a single check
                         break
@@ -914,12 +900,10 @@ class SFTPClient(BaseSFTP, ClosingContextManager):
         path = b(path)
         if self._cwd is None:
             return path
-        if len(path) and path[0:1] == b_slash:
+        if len(path) and path[:1] == b_slash:
             # absolute path
             return path
-        if self._cwd == b_slash:
-            return self._cwd + path
-        return self._cwd + b_slash + path
+        return self._cwd + path if self._cwd == b_slash else self._cwd + b_slash + path
 
 
 class SFTP(SFTPClient):

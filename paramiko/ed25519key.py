@@ -86,12 +86,13 @@ class Ed25519Key(PKey):
         kdfoptions = message.get_binary()
         num_keys = message.get_int()
 
-        if kdfname == "none":
-            # kdfname of "none" must have an empty kdfoptions, the ciphername
-            # must be "none"
-            if kdfoptions or ciphername != "none":
-                raise SSHException("Invalid key")
-        elif kdfname == "bcrypt":
+        if (
+            kdfname == "none"
+            and (kdfoptions or ciphername != "none")
+            or kdfname not in ["none", "bcrypt"]
+        ):
+            raise SSHException("Invalid key")
+        elif kdfname != "none":
             if not password:
                 raise PasswordRequiredException(
                     "Private key file is encrypted"
@@ -99,9 +100,6 @@ class Ed25519Key(PKey):
             kdf = Message(kdfoptions)
             bcrypt_salt = kdf.get_binary()
             bcrypt_rounds = kdf.get_int()
-        else:
-            raise SSHException("Invalid key")
-
         if ciphername != "none" and ciphername not in Transport._cipher_info:
             raise SSHException("Invalid key")
 
@@ -165,10 +163,7 @@ class Ed25519Key(PKey):
         return signing_keys[0]
 
     def asbytes(self):
-        if self.can_sign():
-            v = self._signing_key.verify_key
-        else:
-            v = self._verifying_key
+        v = self._signing_key.verify_key if self.can_sign() else self._verifying_key
         m = Message()
         m.add_string("ssh-ed25519")
         m.add_string(v.encode())
@@ -176,10 +171,7 @@ class Ed25519Key(PKey):
 
     @property
     def _fields(self):
-        if self.can_sign():
-            v = self._signing_key.verify_key
-        else:
-            v = self._verifying_key
+        v = self._signing_key.verify_key if self.can_sign() else self._verifying_key
         return (self.get_name(), v)
 
     def get_name(self):

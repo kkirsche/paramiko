@@ -42,9 +42,7 @@ def inflate_long(s, always_positive=False):
     if not always_positive and (len(s) > 0) and (byte_ord(s[0]) >= 0x80):
         negative = 1
     if len(s) % 4:
-        filler = zero_byte
-        if negative:
-            filler = max_byte
+        filler = max_byte if negative else zero_byte
         # never convert this to ``s +=`` because this is a string, not a number
         # noinspection PyAugmentAssignment
         s = filler * (4 - len(s) % 4) + s
@@ -65,7 +63,7 @@ def deflate_long(n, add_sign_padding=True):
     # after much testing, this algorithm was deemed to be the fastest
     s = bytes()
     n = long(n)
-    while (n != 0) and (n != -1):
+    while n not in [0, -1]:
         s = struct.pack(">I", n & xffffffff) + s
         n >>= 32
     # strip off leading zeros, FFs
@@ -77,10 +75,7 @@ def deflate_long(n, add_sign_padding=True):
     else:
         # degenerate case, n was either 0 or -1
         i = (0,)
-        if n == 0:
-            s = zero_byte
-        else:
-            s = max_byte
+        s = zero_byte if n == 0 else max_byte
     s = s[i[0] :]
     if add_sign_padding:
         if (n == 0) and (byte_ord(s[0]) >= 0x80):
@@ -113,10 +108,7 @@ def safe_string(s):
     out = b""
     for c in s:
         i = byte_ord(c)
-        if 32 <= i <= 127:
-            out += byte_chr(i)
-        else:
-            out += b("%{:02X}".format(i))
+        out += byte_chr(i) if 32 <= i <= 127 else b("%{:02X}".format(i))
     return out
 
 
@@ -250,8 +242,11 @@ def log_to_file(filename, level=DEBUG):
     logger.setLevel(level)
     f = open(filename, "a")
     handler = logging.StreamHandler(f)
-    frm = "%(levelname)-.3s [%(asctime)s.%(msecs)03d] thr=%(_threadid)-3d"
-    frm += " %(name)s: %(message)s"
+    frm = (
+        "%(levelname)-.3s [%(asctime)s.%(msecs)03d] thr=%(_threadid)-3d"
+        + " %(name)s: %(message)s"
+    )
+
     handler.setFormatter(logging.Formatter(frm, "%Y%m%d-%H:%M:%S"))
     logger.addHandler(handler)
 

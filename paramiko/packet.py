@@ -56,10 +56,7 @@ class NeedRekeyException(Exception):
 
 
 def first_arg(e):
-    arg = None
-    if type(e.args) is tuple and len(e.args) > 0:
-        arg = e.args[0]
-    return arg
+    return e.args[0] if type(e.args) is tuple and len(e.args) > 0 else None
 
 
 class Packetizer(object):
@@ -263,9 +260,7 @@ class Packetizer(object):
         """
         if not self.__timer:
             return False
-        if self.__handshake_complete:
-            return False
-        return self.__timer_expired
+        return False if self.__handshake_complete else self.__timer_expired
 
     def complete_handshake(self):
         """
@@ -338,10 +333,7 @@ class Packetizer(object):
                 retry_write = True
             except socket.error as e:
                 arg = first_arg(e)
-                if arg == errno.EAGAIN:
-                    retry_write = True
-                elif arg == errno.EINTR:
-                    # syscall interrupted; try again
+                if arg in [errno.EAGAIN, errno.EINTR]:
                     retry_write = True
                 else:
                     n = -1
@@ -392,10 +384,7 @@ class Packetizer(object):
         # encrypt this sucka
         data = asbytes(data)
         cmd = byte_ord(data[0])
-        if cmd in MSG_NAMES:
-            cmd_name = MSG_NAMES[cmd]
-        else:
-            cmd_name = "${:x}".format(cmd)
+        cmd_name = MSG_NAMES[cmd] if cmd in MSG_NAMES else "${:x}".format(cmd)
         orig_len = len(data)
         self.__write_lock.acquire()
         try:
@@ -403,21 +392,16 @@ class Packetizer(object):
                 data = self.__compress_engine_out(data)
             packet = self._build_packet(data)
             if self.__dump_packets:
-                self._log(
-                    DEBUG,
-                    "Write packet <{}>, length {}".format(cmd_name, orig_len),
-                )
+                self._log(DEBUG, f"Write packet <{cmd_name}>, length {orig_len}")
                 self._log(DEBUG, util.format_binary(packet, "OUT: "))
-            if self.__block_engine_out is not None:
-                if self.__etm_out:
-                    # packet length is not encrypted in EtM
-                    out = packet[0:4] + self.__block_engine_out.update(
-                        packet[4:]
-                    )
-                else:
-                    out = self.__block_engine_out.update(packet)
-            else:
+            if self.__block_engine_out is None:
                 out = packet
+            elif self.__etm_out:
+                    # packet length is not encrypted in EtM
+                out = packet[:4] + self.__block_engine_out.update(packet[4:])
+
+            else:
+                out = self.__block_engine_out.update(packet)
             # + mac
             if self.__block_engine_out is not None:
                 packed = struct.pack(">I", self.__sequence_number_out)
@@ -519,12 +503,7 @@ class Packetizer(object):
         payload = packet[1 : packet_size - padding]
 
         if self.__dump_packets:
-            self._log(
-                DEBUG,
-                "Got payload ({} bytes, {} padding)".format(
-                    packet_size, padding
-                ),
-            )
+            self._log(DEBUG, f"Got payload ({packet_size} bytes, {padding} padding)")
 
         if self.__compress_engine_in is not None:
             payload = self.__compress_engine_in(payload)
@@ -565,15 +544,9 @@ class Packetizer(object):
             self._trigger_rekey()
 
         cmd = byte_ord(payload[0])
-        if cmd in MSG_NAMES:
-            cmd_name = MSG_NAMES[cmd]
-        else:
-            cmd_name = "${:x}".format(cmd)
+        cmd_name = MSG_NAMES[cmd] if cmd in MSG_NAMES else "${:x}".format(cmd)
         if self.__dump_packets:
-            self._log(
-                DEBUG,
-                "Read packet <{}>, length {}".format(cmd_name, len(payload)),
-            )
+            self._log(DEBUG, f"Read packet <{cmd_name}>, length {len(payload)}")
         return cmd, msg
 
     # ...protected...
@@ -611,9 +584,7 @@ class Packetizer(object):
             except socket.timeout:
                 pass
             except EnvironmentError as e:
-                if first_arg(e) == errno.EINTR:
-                    pass
-                else:
+                if first_arg(e) != errno.EINTR:
                     raise
             if self.__closed:
                 raise EOFError()

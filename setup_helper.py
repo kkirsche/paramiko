@@ -49,9 +49,7 @@ def _get_gid(name):
         result = getgrnam(name)
     except KeyError:
         result = None
-    if result is not None:
-        return result[2]
-    return None
+    return result[2] if result is not None else None
 
 
 def _get_uid(name):
@@ -62,9 +60,7 @@ def _get_uid(name):
         result = getpwnam(name)
     except KeyError:
         result = None
-    if result is not None:
-        return result[2]
-    return None
+    return result[2] if result is not None else None
 
 
 def make_tarball(
@@ -109,14 +105,14 @@ def make_tarball(
             "'bzip2' or 'compress'"
         )
 
-    archive_name = base_name + ".tar"
+    archive_name = f"{base_name}.tar"
     if compress and compress in tarfile_compress_flag:
         archive_name += compress_ext[compress]
 
     mode = "w:" + tarfile_compress_flag.get(compress, "")
 
     mkpath(os.path.dirname(archive_name), dry_run=dry_run)
-    log.info("Creating tar file %s with mode %s" % (archive_name, mode))
+    log.info(f"Creating tar file {archive_name} with mode {mode}")
 
     uid = _get_uid(owner)
     gid = _get_gid(group)
@@ -134,12 +130,11 @@ def make_tarball(
         tar = tarfile.open(archive_name, mode=mode)
         # This recursively adds everything underneath base_dir
         try:
-            try:
-                # Support for the `filter' parameter was added in Python 2.7,
-                # earlier versions will raise TypeError.
-                tar.add(base_dir, filter=_set_uid_gid)
-            except TypeError:
-                tar.add(base_dir)
+            # Support for the `filter' parameter was added in Python 2.7,
+            # earlier versions will raise TypeError.
+            tar.add(base_dir, filter=_set_uid_gid)
+        except TypeError:
+            tar.add(base_dir)
         finally:
             tar.close()
 

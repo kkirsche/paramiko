@@ -135,9 +135,7 @@ class PKey(object):
         """
         hs = hash(self)
         ho = hash(other)
-        if hs != ho:
-            return cmp(hs, ho)  # noqa
-        return cmp(self.asbytes(), other.asbytes())  # noqa
+        return cmp(hs, ho) if hs != ho else cmp(self.asbytes(), other.asbytes())
 
     def __eq__(self, other):
         return isinstance(other, PKey) and self._fields == other._fields
@@ -246,8 +244,7 @@ class PKey(object):
             encrypted, and ``password`` is ``None``
         :raises: `.SSHException` -- if the key file is invalid
         """
-        key = cls(filename=filename, password=password)
-        return key
+        return cls(filename=filename, password=password)
 
     @classmethod
     def from_private_key(cls, file_obj, password=None):
@@ -267,8 +264,7 @@ class PKey(object):
             if the private key file is encrypted, and ``password`` is ``None``
         :raises: `.SSHException` -- if the key file is invalid
         """
-        key = cls(file_obj=file_obj, password=password)
-        return key
+        return cls(file_obj=file_obj, password=password)
 
     def write_private_key_file(self, filename, password=None):
         """
@@ -325,7 +321,7 @@ class PKey(object):
     def _read_private_key(self, tag, f, password=None):
         lines = f.readlines()
         if not lines:
-            raise SSHException("no lines in {} private key file".format(tag))
+            raise SSHException(f"no lines in {tag} private key file")
 
         # find the BEGIN tag
         start = 0
@@ -337,7 +333,7 @@ class PKey(object):
         start += 1
         keytype = m.group(1) if m else None
         if start >= len(lines) or keytype is None:
-            raise SSHException("not a valid {} private key file".format(tag))
+            raise SSHException(f"not a valid {tag} private key file")
 
         # find the END tag
         end = start
@@ -353,9 +349,7 @@ class PKey(object):
             data = self._read_private_key_openssh(lines[start:end], password)
             pkformat = self._PRIVATE_KEY_FORMAT_OPENSSH
         else:
-            raise SSHException(
-                "encountered {} key, expected {} key".format(keytype, tag)
-            )
+            raise SSHException(f"encountered {keytype} key, expected {tag} key")
 
         return pkformat, data
 
@@ -364,10 +358,9 @@ class PKey(object):
         raise SSHException(err.format(self.__class__.__name__, id_))
 
     def _read_private_key_pem(self, lines, end, password):
-        start = 0
         # parse any headers first
         headers = {}
-        start += 1
+        start = 0 + 1
         while start < len(lines):
             line = lines[start].split(": ")
             if len(line) == 1:
@@ -378,24 +371,20 @@ class PKey(object):
         try:
             data = decodebytes(b("".join(lines[start:end])))
         except base64.binascii.Error as e:
-            raise SSHException("base64 decoding error: {}".format(e))
+            raise SSHException(f"base64 decoding error: {e}")
         if "proc-type" not in headers:
             # unencryped: done
             return data
         # encrypted keyfile: will need a password
         proc_type = headers["proc-type"]
         if proc_type != "4,ENCRYPTED":
-            raise SSHException(
-                'Unknown private key structure "{}"'.format(proc_type)
-            )
+            raise SSHException(f'Unknown private key structure "{proc_type}"')
         try:
             encryption_type, saltstr = headers["dek-info"].split(",")
         except:
             raise SSHException("Can't parse DEK-info in private key file")
         if encryption_type not in self._CIPHER_TABLE:
-            raise SSHException(
-                'Unknown private key cipher "{}"'.format(encryption_type)
-            )
+            raise SSHException(f'Unknown private key cipher "{encryption_type}"')
         # if no password was passed in,
         # raise an exception pointing out that we need one
         if password is None:
@@ -420,7 +409,7 @@ class PKey(object):
         try:
             data = decodebytes(b("".join(lines)))
         except base64.binascii.Error as e:
-            raise SSHException("base64 decoding error: {}".format(e))
+            raise SSHException(f"base64 decoding error: {e}")
 
         # read data struct
         auth_magic = data[:15]
@@ -443,10 +432,9 @@ class PKey(object):
                 mode = modes.CTR
             else:
                 raise SSHException(
-                    "unknown cipher `{}` used in private key file".format(
-                        cipher.decode("utf-8")
-                    )
+                    f'unknown cipher `{cipher.decode("utf-8")}` used in private key file'
                 )
+
             # Encrypted private key.
             # If no password was passed in, raise an exception pointing
             # out that we need one
@@ -602,7 +590,7 @@ class PKey(object):
         # but eg ECDSA is a 1:N mapping.
         key_types = key_type
         cert_types = cert_type
-        if isinstance(key_type, string_types):
+        if isinstance(key_types, string_types):
             key_types = [key_types]
         if isinstance(cert_types, string_types):
             cert_types = [cert_types]
@@ -730,7 +718,7 @@ class PublicBlob(object):
             deets = "key type={!r}, but blob type={!r}".format(
                 key_type, blob_type
             )
-            raise ValueError("Invalid PublicBlob contents: {}".format(deets))
+            raise ValueError(f"Invalid PublicBlob contents: {deets}")
         # All good? All good.
         return cls(type_=key_type, blob=key_blob, comment=comment)
 
@@ -746,9 +734,9 @@ class PublicBlob(object):
         return cls(type_=type_, blob=message.asbytes())
 
     def __str__(self):
-        ret = "{} public key/certificate".format(self.key_type)
+        ret = f"{self.key_type} public key/certificate"
         if self.comment:
-            ret += "- {}".format(self.comment)
+            ret += f"- {self.comment}"
         return ret
 
     def __eq__(self, other):

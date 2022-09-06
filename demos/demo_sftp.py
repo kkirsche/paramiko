@@ -59,14 +59,14 @@ if hostname.find(":") >= 0:
 # get username
 if username == "":
     default_username = getpass.getuser()
-    username = input("Username [%s]: " % default_username)
+    username = input(f"Username [{default_username}]: ")
     if len(username) == 0:
         username = default_username
-if not UseGSSAPI:
-    password = getpass.getpass("Password for %s@%s: " % (username, hostname))
-else:
-    password = None
-
+password = (
+    None
+    if UseGSSAPI
+    else getpass.getpass(f"Password for {username}@{hostname}: ")
+)
 
 # get host key, if we know one
 hostkeytype = None
@@ -88,7 +88,7 @@ except IOError:
 if hostname in host_keys:
     hostkeytype = host_keys[hostname].keys()[0]
     hostkey = host_keys[hostname][hostkeytype]
-    print("Using host key of type %s" % hostkeytype)
+    print(f"Using host key of type {hostkeytype}")
 
 
 # now, connect and use paramiko Transport to negotiate SSH2 across the connection
@@ -106,7 +106,7 @@ try:
 
     # dirlist on remote host
     dirlist = sftp.listdir(".")
-    print("Dirlist: %s" % dirlist)
+    print(f"Dirlist: {dirlist}")
 
     # copy this demo onto the server
     try:
@@ -134,7 +134,7 @@ try:
     t.close()
 
 except Exception as e:
-    print("*** Caught exception: %s: %s" % (e.__class__, e))
+    print(f"*** Caught exception: {e.__class__}: {e}")
     traceback.print_exc()
     try:
         t.close()

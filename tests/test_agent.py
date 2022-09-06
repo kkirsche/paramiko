@@ -35,7 +35,7 @@ class AgentTests(unittest.TestCase):
 
     def test_agent_signing_defaults_to_0_for_flags_field(self):
         # No algorithm kwarg at all
-        self._sign_with_agent(kwargs=dict(), expectation=0)
+        self._sign_with_agent(kwargs={}, expectation=0)
 
     def test_agent_signing_is_2_for_SHA256(self):
         self._sign_with_agent(

@@ -66,16 +66,15 @@ class NullServer(paramiko.ServerInterface):
         super(NullServer, self).__init__(*args, **kwargs)
 
     def get_allowed_auths(self, username):
-        if username == "slowdive":
-            return "publickey,password"
-        return "publickey"
+        return "publickey,password" if username == "slowdive" else "publickey"
 
     def check_auth_password(self, username, password):
-        if (username == "slowdive") and (password == "pygmalion"):
-            return paramiko.AUTH_SUCCESSFUL
-        if (username == "slowdive") and (password == "unresponsive-server"):
-            time.sleep(5)
-            return paramiko.AUTH_SUCCESSFUL
+        if username == "slowdive":
+            if password == "pygmalion":
+                return paramiko.AUTH_SUCCESSFUL
+            if password == "unresponsive-server":
+                time.sleep(5)
+                return paramiko.AUTH_SUCCESSFUL
         return paramiko.AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
@@ -100,9 +99,7 @@ class NullServer(paramiko.ServerInterface):
         return paramiko.OPEN_SUCCEEDED
 
     def check_channel_exec_request(self, channel, command):
-        if command != b"yes":
-            return False
-        return True
+        return command == b"yes"
 
     def check_channel_env_request(self, channel, name, value):
         if name == "INVALID_ENV":
@@ -298,11 +295,10 @@ class SSHClientTest(ClientTest):
         ):
             try:
                 self._test_connection(
-                    key_filename=[
-                        _support("test_{}.key".format(x)) for x in attempt
-                    ],
+                    key_filename=[_support(f"test_{x}.key") for x in attempt],
                     allowed_keys=[types_[x] for x in accept],
                 )
+
             finally:
                 # Clean up to avoid occasional gc-related deadlocks.
                 # TODO: use nose test generators after nose port
@@ -330,7 +326,7 @@ class SSHClientTest(ClientTest):
         # server-side behavior is 100% identical.)
         # NOTE: only bothered whipping up one cert per overall class/family.
         for type_ in ("rsa", "dss", "ecdsa_256", "ed25519"):
-            cert_name = "test_{}.key-cert.pub".format(type_)
+            cert_name = f"test_{type_}.key-cert.pub"
             cert_path = _support(os.path.join("cert_support", cert_name))
             self._test_connection(
                 key_filename=cert_path,
@@ -346,29 +342,26 @@ class SSHClientTest(ClientTest):
         # that a specific cert was found, along with regular authorization
         # succeeding proving that the overall flow works.
         for type_ in ("rsa", "dss", "ecdsa_256", "ed25519"):
-            key_name = "test_{}.key".format(type_)
+            key_name = f"test_{type_}.key"
             key_path = _support(os.path.join("cert_support", key_name))
             self._test_connection(
                 key_filename=key_path,
-                public_blob=PublicBlob.from_file(
-                    "{}-cert.pub".format(key_path)
-                ),
+                public_blob=PublicBlob.from_file(f"{key_path}-cert.pub"),
             )
 
     def _cert_algo_test(self, ver, alg):
         # Issue #2017; see auth_handler.py
         self.connect_kwargs["username"] = "somecertuser"  # neuter pw auth
         self._test_connection(
-            # NOTE: SSHClient is able to take either the key or the cert & will
-            # set up its internals as needed
             key_filename=_support(
                 os.path.join("cert_support", "test_rsa.key-cert.pub")
             ),
-            server_name="SSH-2.0-OpenSSH_{}".format(ver),
+            server_name=f"SSH-2.0-OpenSSH_{ver}",
         )
+
         assert (
             self.tc._transport._agreed_pubkey_algorithm
-            == "{}-cert-v01@openssh.com".format(alg)
+            == f"{alg}-cert-v01@openssh.com"
         )
 
     @requires_sha1_signing

@@ -50,7 +50,7 @@ def agent_auth(transport, username):
         return
 
     for key in agent_keys:
-        print("Trying ssh-agent key %s" % hexlify(key.get_fingerprint()))
+        print(f"Trying ssh-agent key {hexlify(key.get_fingerprint())}")
         try:
             transport.auth_publickey(username, key)
             print("... success!")
@@ -61,15 +61,13 @@ def agent_auth(transport, username):
 
 def manual_auth(username, hostname):
     default_auth = "p"
-    auth = input(
-        "Auth by (p)assword, (r)sa key, or (d)ss key? [%s] " % default_auth
-    )
+    auth = input(f"Auth by (p)assword, (r)sa key, or (d)ss key? [{default_auth}] ")
     if len(auth) == 0:
         auth = default_auth
 
     if auth == "r":
         default_path = os.path.join(os.environ["HOME"], ".ssh", "id_rsa")
-        path = input("RSA key [%s]: " % default_path)
+        path = input(f"RSA key [{default_path}]: ")
         if len(path) == 0:
             path = default_path
         try:
@@ -80,7 +78,7 @@ def manual_auth(username, hostname):
         t.auth_publickey(username, key)
     elif auth == "d":
         default_path = os.path.join(os.environ["HOME"], ".ssh", "id_dsa")
-        path = input("DSS key [%s]: " % default_path)
+        path = input(f"DSS key [{default_path}]: ")
         if len(path) == 0:
             path = default_path
         try:
@@ -90,7 +88,7 @@ def manual_auth(username, hostname):
             key = paramiko.DSSKey.from_private_key_file(path, password)
         t.auth_publickey(username, key)
     else:
-        pw = getpass.getpass("Password for %s@%s: " % (username, hostname))
+        pw = getpass.getpass(f"Password for {username}@{hostname}: ")
         t.auth_password(username, pw)
 
 
@@ -117,7 +115,7 @@ try:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((hostname, port))
 except Exception as e:
-    print("*** Connect failed: " + str(e))
+    print(f"*** Connect failed: {str(e)}")
     traceback.print_exc()
     sys.exit(1)
 
@@ -157,7 +155,7 @@ try:
     # get username
     if username == "":
         default_username = getpass.getuser()
-        username = input("Username [%s]: " % default_username)
+        username = input(f"Username [{default_username}]: ")
         if len(username) == 0:
             username = default_username
 
@@ -178,7 +176,7 @@ try:
     t.close()
 
 except Exception as e:
-    print("*** Caught exception: " + str(e.__class__) + ": " + str(e))
+    print(f"*** Caught exception: {str(e.__class__)}: {str(e)}")
     traceback.print_exc()
     try:
         t.close()

@@ -149,11 +149,9 @@ class KexGex(object):
         if pack is None:
             raise SSHException("Can't do server-side gex with no modulus pack")
         self.transport._log(
-            DEBUG,
-            "Picking p ({} <= {} <= {} bits)".format(
-                minbits, preferredbits, maxbits
-            ),
+            DEBUG, f"Picking p ({minbits} <= {preferredbits} <= {maxbits} bits)"
         )
+
         self.g, self.p = pack.get_modulus(minbits, preferredbits, maxbits)
         m = Message()
         m.add_byte(c_MSG_KEXDH_GEX_GROUP)
@@ -175,9 +173,7 @@ class KexGex(object):
         pack = self.transport._get_modulus_pack()
         if pack is None:
             raise SSHException("Can't do server-side gex with no modulus pack")
-        self.transport._log(
-            DEBUG, "Picking p (~ {} bits)".format(self.preferred_bits)
-        )
+        self.transport._log(DEBUG, f"Picking p (~ {self.preferred_bits} bits)")
         self.g, self.p = pack.get_modulus(
             self.min_bits, self.preferred_bits, self.max_bits
         )
@@ -196,10 +192,10 @@ class KexGex(object):
         bitlen = util.bit_length(self.p)
         if (bitlen < 1024) or (bitlen > 8192):
             raise SSHException(
-                "Server-generated gex p (don't ask) is out of range "
-                "({} bits)".format(bitlen)
+                f"Server-generated gex p (don't ask) is out of range ({bitlen} bits)"
             )
-        self.transport._log(DEBUG, "Got server p ({} bits)".format(bitlen))
+
+        self.transport._log(DEBUG, f"Got server p ({bitlen} bits)")
         self._generate_x()
         # now compute e = g^x mod p
         self.e = pow(self.g, self.x, self.p)

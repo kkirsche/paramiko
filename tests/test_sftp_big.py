@@ -51,7 +51,7 @@ class TestBigSFTP(object):
             # now make sure every file is there, by creating a list of filenmes
             # and reading them in random order.
             numlist = list(range(numfiles))
-            while len(numlist) > 0:
+            while numlist:
                 r = numlist[random.randint(0, len(numlist) - 1)]
                 with sftp.open("%s/file%d.txt" % (sftp.FOLDER, r)) as f:
                     assert f.readline() == "this is file #%d.\n" % r
@@ -70,29 +70,27 @@ class TestBigSFTP(object):
         kblob = 1024 * b"x"
         start = time.time()
         try:
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "w") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "w") as f:
                 for n in range(1024):
                     f.write(kblob)
                     if n % 128 == 0:
                         sys.stderr.write(".")
             sys.stderr.write(" ")
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
             end = time.time()
             sys.stderr.write("%ds " % round(end - start))
 
             start = time.time()
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "r") as f:
-                for n in range(1024):
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "r") as f:
+                for _ in range(1024):
                     data = f.read(1024)
                     assert data == kblob
 
             end = time.time()
             sys.stderr.write("%ds " % round(end - start))
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
 
     def test_big_file_pipelined(self, sftp):
         """
@@ -101,7 +99,7 @@ class TestBigSFTP(object):
         kblob = bytes().join([struct.pack(">H", n) for n in range(512)])
         start = time.time()
         try:
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "wb") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "wb") as f:
                 f.set_pipelined(True)
                 for n in range(1024):
                     f.write(kblob)
@@ -109,14 +107,12 @@ class TestBigSFTP(object):
                         sys.stderr.write(".")
             sys.stderr.write(" ")
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
             end = time.time()
             sys.stderr.write("%ds " % round(end - start))
 
             start = time.time()
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "rb") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "rb") as f:
                 file_size = f.stat().st_size
                 f.prefetch(file_size)
 
@@ -137,12 +133,12 @@ class TestBigSFTP(object):
             end = time.time()
             sys.stderr.write("%ds " % round(end - start))
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
 
     def test_prefetch_seek(self, sftp):
         kblob = bytes().join([struct.pack(">H", n) for n in range(512)])
         try:
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "wb") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "wb") as f:
                 f.set_pipelined(True)
                 for n in range(1024):
                     f.write(kblob)
@@ -150,15 +146,13 @@ class TestBigSFTP(object):
                         sys.stderr.write(".")
             sys.stderr.write(" ")
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
 
             start = time.time()
             k2blob = kblob + kblob
             chunk = 793
-            for i in range(10):
-                with sftp.open("%s/hongry.txt" % sftp.FOLDER, "rb") as f:
+            for _ in range(10):
+                with sftp.open(f"{sftp.FOLDER}/hongry.txt", "rb") as f:
                     file_size = f.stat().st_size
                     f.prefetch(file_size)
                     base_offset = (512 * 1024) + 17 * random.randint(
@@ -166,7 +160,7 @@ class TestBigSFTP(object):
                     )
                     offsets = [base_offset + j * chunk for j in range(100)]
                     # randomly seek around and read them out
-                    for j in range(100):
+                    for _ in range(100):
                         offset = offsets[random.randint(0, len(offsets) - 1)]
                         offsets.remove(offset)
                         f.seek(offset)
@@ -177,12 +171,12 @@ class TestBigSFTP(object):
             end = time.time()
             sys.stderr.write("%ds " % round(end - start))
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
 
     def test_readv_seek(self, sftp):
         kblob = bytes().join([struct.pack(">H", n) for n in range(512)])
         try:
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "wb") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "wb") as f:
                 f.set_pipelined(True)
                 for n in range(1024):
                     f.write(kblob)
@@ -190,34 +184,32 @@ class TestBigSFTP(object):
                         sys.stderr.write(".")
             sys.stderr.write(" ")
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
 
             start = time.time()
             k2blob = kblob + kblob
             chunk = 793
-            for i in range(10):
-                with sftp.open("%s/hongry.txt" % sftp.FOLDER, "rb") as f:
+            for _ in range(10):
+                with sftp.open(f"{sftp.FOLDER}/hongry.txt", "rb") as f:
                     base_offset = (512 * 1024) + 17 * random.randint(
                         1000, 2000
                     )
                     # make a bunch of offsets and put them in random order
                     offsets = [base_offset + j * chunk for j in range(100)]
                     readv_list = []
-                    for j in range(100):
+                    for _ in range(100):
                         o = offsets[random.randint(0, len(offsets) - 1)]
                         offsets.remove(o)
                         readv_list.append((o, chunk))
                     ret = f.readv(readv_list)
-                    for i in range(len(readv_list)):
-                        offset = readv_list[i][0]
+                    for readv in readv_list:
+                        offset = readv[0]
                         n_offset = offset % 1024
                         assert next(ret) == k2blob[n_offset : n_offset + chunk]
             end = time.time()
             sys.stderr.write("%ds " % round(end - start))
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
 
     def test_lots_of_prefetching(self, sftp):
         """
@@ -226,7 +218,7 @@ class TestBigSFTP(object):
         """
         kblob = 1024 * b"x"
         try:
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "w") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "w") as f:
                 f.set_pipelined(True)
                 for n in range(1024):
                     f.write(kblob)
@@ -234,15 +226,13 @@ class TestBigSFTP(object):
                         sys.stderr.write(".")
             sys.stderr.write(" ")
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
 
-            for i in range(10):
-                with sftp.open("%s/hongry.txt" % sftp.FOLDER, "r") as f:
+            for _ in range(10):
+                with sftp.open(f"{sftp.FOLDER}/hongry.txt", "r") as f:
                     file_size = f.stat().st_size
                     f.prefetch(file_size)
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "r") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "r") as f:
                 file_size = f.stat().st_size
                 f.prefetch(file_size)
                 for n in range(1024):
@@ -252,7 +242,7 @@ class TestBigSFTP(object):
                         sys.stderr.write(".")
             sys.stderr.write(" ")
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
 
     def test_prefetch_readv(self, sftp):
         """
@@ -260,7 +250,7 @@ class TestBigSFTP(object):
         """
         kblob = bytes().join([struct.pack(">H", n) for n in range(512)])
         try:
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "wb") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "wb") as f:
                 f.set_pipelined(True)
                 for n in range(1024):
                     f.write(kblob)
@@ -268,11 +258,9 @@ class TestBigSFTP(object):
                         sys.stderr.write(".")
             sys.stderr.write(" ")
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
 
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "rb") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "rb") as f:
                 file_size = f.stat().st_size
                 f.prefetch(file_size)
                 data = f.read(1024)
@@ -293,7 +281,7 @@ class TestBigSFTP(object):
 
             sys.stderr.write(" ")
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
 
     def test_large_readv(self, sftp):
         """
@@ -302,7 +290,7 @@ class TestBigSFTP(object):
         """
         kblob = bytes().join([struct.pack(">H", n) for n in range(512)])
         try:
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "wb") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "wb") as f:
                 f.set_pipelined(True)
                 for n in range(1024):
                     f.write(kblob)
@@ -310,11 +298,9 @@ class TestBigSFTP(object):
                         sys.stderr.write(".")
             sys.stderr.write(" ")
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
 
-            with sftp.open("%s/hongry.txt" % sftp.FOLDER, "rb") as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "rb") as f:
                 data = list(f.readv([(23 * 1024, 128 * 1024)]))
                 assert len(data) == 1
                 data = data[0]
@@ -322,7 +308,7 @@ class TestBigSFTP(object):
 
             sys.stderr.write(" ")
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
 
     def test_big_file_big_buffer(self, sftp):
         """
@@ -330,16 +316,12 @@ class TestBigSFTP(object):
         """
         mblob = 1024 * 1024 * "x"
         try:
-            with sftp.open(
-                "%s/hongry.txt" % sftp.FOLDER, "w", 128 * 1024
-            ) as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "w", 128 * 1024) as f:
                 f.write(mblob)
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
 
     def test_big_file_renegotiate(self, sftp):
         """
@@ -349,26 +331,20 @@ class TestBigSFTP(object):
         t.packetizer.REKEY_BYTES = 512 * 1024
         k32blob = 32 * 1024 * "x"
         try:
-            with sftp.open(
-                "%s/hongry.txt" % sftp.FOLDER, "w", 128 * 1024
-            ) as f:
-                for i in range(32):
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "w", 128 * 1024) as f:
+                for _ in range(32):
                     f.write(k32blob)
 
-            assert (
-                sftp.stat("%s/hongry.txt" % sftp.FOLDER).st_size == 1024 * 1024
-            )
+            assert sftp.stat(f"{sftp.FOLDER}/hongry.txt").st_size == 1024 * 1024
             assert t.H != t.session_id
 
             # try to read it too.
-            with sftp.open(
-                "%s/hongry.txt" % sftp.FOLDER, "r", 128 * 1024
-            ) as f:
+            with sftp.open(f"{sftp.FOLDER}/hongry.txt", "r", 128 * 1024) as f:
                 file_size = f.stat().st_size
                 f.prefetch(file_size)
                 total = 0
                 while total < 1024 * 1024:
                     total += len(f.read(32 * 1024))
         finally:
-            sftp.remove("%s/hongry.txt" % sftp.FOLDER)
+            sftp.remove(f"{sftp.FOLDER}/hongry.txt")
             t.packetizer.REKEY_BYTES = pow(2, 30)

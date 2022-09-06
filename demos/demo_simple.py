@@ -68,11 +68,11 @@ if hostname.find(":") >= 0:
 # get username
 if username == "":
     default_username = getpass.getuser()
-    username = input("Username [%s]: " % default_username)
+    username = input(f"Username [{default_username}]: ")
     if len(username) == 0:
         username = default_username
 if not UseGSSAPI and not DoGSSAPIKeyExchange:
-    password = getpass.getpass("Password for %s@%s: " % (username, hostname))
+    password = getpass.getpass(f"Password for {username}@{hostname}: ")
 
 
 # now, connect and use paramiko Client to negotiate SSH2 across the connection
@@ -81,9 +81,7 @@ try:
     client.load_system_host_keys()
     client.set_missing_host_key_policy(paramiko.WarningPolicy())
     print("*** Connecting...")
-    if not UseGSSAPI and not DoGSSAPIKeyExchange:
-        client.connect(hostname, port, username, password)
-    else:
+    if UseGSSAPI or DoGSSAPIKeyExchange:
         try:
             client.connect(
                 hostname,
@@ -94,11 +92,11 @@ try:
             )
         except Exception:
             # traceback.print_exc()
-            password = getpass.getpass(
-                "Password for %s@%s: " % (username, hostname)
-            )
+            password = getpass.getpass(f"Password for {username}@{hostname}: ")
             client.connect(hostname, port, username, password)
 
+    else:
+        client.connect(hostname, port, username, password)
     chan = client.invoke_shell()
     print(repr(client.get_transport()))
     print("*** Here we go!\n")
@@ -107,7 +105,7 @@ try:
     client.close()
 
 except Exception as e:
-    print("*** Caught exception: %s: %s" % (e.__class__, e))
+    print(f"*** Caught exception: {e.__class__}: {e}")
     traceback.print_exc()
     try:
         client.close()

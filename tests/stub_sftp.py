@@ -106,27 +106,16 @@ class StubSFTPServer(SFTPServerInterface):
             binary_flag = getattr(os, "O_BINARY", 0)
             flags |= binary_flag
             mode = getattr(attr, "st_mode", None)
-            if mode is not None:
-                fd = os.open(path, flags, mode)
-            else:
-                # os.open() defaults to 0777 which is
-                # an odd default mode for files
-                fd = os.open(path, flags, o666)
+            fd = os.open(path, flags, o666) if mode is None else os.open(path, flags, mode)
         except OSError as e:
             return SFTPServer.convert_errno(e.errno)
         if (flags & os.O_CREAT) and (attr is not None):
             attr._flags &= ~attr.FLAG_PERMISSIONS
             SFTPServer.set_file_attr(path, attr)
         if flags & os.O_WRONLY:
-            if flags & os.O_APPEND:
-                fstr = "ab"
-            else:
-                fstr = "wb"
+            fstr = "ab" if flags & os.O_APPEND else "wb"
         elif flags & os.O_RDWR:
-            if flags & os.O_APPEND:
-                fstr = "a+b"
-            else:
-                fstr = "r+b"
+            fstr = "a+b" if flags & os.O_APPEND else "r+b"
         else:
             # O_RDONLY (== 0)
             fstr = "rb"
@@ -226,7 +215,7 @@ class StubSFTPServer(SFTPServerInterface):
             if symlink[: len(self.ROOT)] == self.ROOT:
                 symlink = symlink[len(self.ROOT) :]
                 if (len(symlink) == 0) or (symlink[0] != "/"):
-                    symlink = "/" + symlink
+                    symlink = f"/{symlink}"
             else:
                 symlink = "<error>"
         return symlink

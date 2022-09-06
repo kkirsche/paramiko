@@ -66,9 +66,7 @@ class NullServer(ServerInterface):
             return "keyboard-interactive"
         if username == "utf8":
             return "password"
-        if username == "non-utf8":
-            return "password"
-        return "publickey"
+        return "password" if username == "non-utf8" else "publickey"
 
     def check_auth_password(self, username, password):
         if (username == "slowdive") and (password == "pygmalion"):
@@ -108,9 +106,12 @@ class NullServer(ServerInterface):
         return AUTH_FAILED
 
     def check_auth_interactive_response(self, responses):
-        if self.username == "commie":
-            if (len(responses) == 1) and (responses[0] == "cat"):
-                return AUTH_SUCCESSFUL
+        if (
+            self.username == "commie"
+            and (len(responses) == 1)
+            and (responses[0] == "cat")
+        ):
+            return AUTH_SUCCESSFUL
         return AUTH_FAILED
 
 

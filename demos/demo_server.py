@@ -36,7 +36,7 @@ paramiko.util.log_to_file("demo_server.log")
 host_key = paramiko.RSAKey(filename="test_rsa.key")
 # host_key = paramiko.DSSKey(filename='test_dss.key')
 
-print("Read key: " + u(hexlify(host_key.get_fingerprint())))
+print(f"Read key: {u(hexlify(host_key.get_fingerprint()))}")
 
 
 class Server(paramiko.ServerInterface):
@@ -64,7 +64,7 @@ class Server(paramiko.ServerInterface):
         return paramiko.AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
-        print("Auth attempt with key: " + u(hexlify(key.get_fingerprint())))
+        print(f"Auth attempt with key: {u(hexlify(key.get_fingerprint()))}")
         if (username == "robey") and (key == self.good_pub_key):
             return paramiko.AUTH_SUCCESSFUL
         return paramiko.AUTH_FAILED
@@ -121,7 +121,7 @@ try:
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("", 2200))
 except Exception as e:
-    print("*** Bind failed: " + str(e))
+    print(f"*** Bind failed: {str(e)}")
     traceback.print_exc()
     sys.exit(1)
 
@@ -130,7 +130,7 @@ try:
     print("Listening for connection ...")
     client, addr = sock.accept()
 except Exception as e:
-    print("*** Listen/accept failed: " + str(e))
+    print(f"*** Listen/accept failed: {str(e)}")
     traceback.print_exc()
     sys.exit(1)
 
@@ -176,7 +176,7 @@ try:
     chan.close()
 
 except Exception as e:
-    print("*** Caught exception: " + str(e.__class__) + ": " + str(e))
+    print(f"*** Caught exception: {str(e.__class__)}: {str(e)}")
     traceback.print_exc()
     try:
         t.close()

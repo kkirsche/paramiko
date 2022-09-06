@@ -117,7 +117,7 @@ class SFTPServer(BaseSFTP, SubsystemHandler):
         BaseSFTP.__init__(self)
         SubsystemHandler.__init__(self, channel, name, server)
         transport = channel.get_transport()
-        self.logger = util.get_logger(transport.get_log_channel() + ".sftp")
+        self.logger = util.get_logger(f"{transport.get_log_channel()}.sftp")
         self.ultra_debug = transport.get_hexdump()
         self.next_handle = 1
         # map of handle-string to SFTPHandle for files & folders:
@@ -128,13 +128,9 @@ class SFTPServer(BaseSFTP, SubsystemHandler):
     def _log(self, level, msg):
         if issubclass(type(msg), list):
             for m in msg:
-                super(SFTPServer, self)._log(
-                    level, "[chan " + self.sock.get_name() + "] " + m
-                )
+                super(SFTPServer, self)._log(level, f"[chan {self.sock.get_name()}] {m}")
         else:
-            super(SFTPServer, self)._log(
-                level, "[chan " + self.sock.get_name() + "] " + msg
-            )
+            super(SFTPServer, self)._log(level, f"[chan {self.sock.get_name()}] {msg}")
 
     def start_subsystem(self, name, transport, channel):
         self.sock = channel
@@ -148,7 +144,7 @@ class SFTPServer(BaseSFTP, SubsystemHandler):
                 self._log(DEBUG, "EOF -- end of session")
                 return
             except Exception as e:
-                self._log(DEBUG, "Exception on channel: " + str(e))
+                self._log(DEBUG, f"Exception on channel: {str(e)}")
                 self._log(DEBUG, util.tb_strings())
                 return
             msg = Message(data)
@@ -156,7 +152,7 @@ class SFTPServer(BaseSFTP, SubsystemHandler):
             try:
                 self._process(t, request_number, msg)
             except Exception as e:
-                self._log(DEBUG, "Exception in server processing: " + str(e))
+                self._log(DEBUG, f"Exception in server processing: {str(e)}")
                 self._log(DEBUG, util.tb_strings())
                 # send some kind of failure message, at least
                 try:
@@ -189,7 +185,7 @@ class SFTPServer(BaseSFTP, SubsystemHandler):
         if e == errno.EACCES:
             # permission denied
             return SFTP_PERMISSION_DENIED
-        elif (e == errno.ENOENT) or (e == errno.ENOTDIR):
+        elif e in [errno.ENOENT, errno.ENOTDIR]:
             # no such file
             return SFTP_NO_SUCH_FILE
         else:
@@ -376,7 +372,7 @@ class SFTPServer(BaseSFTP, SubsystemHandler):
         return flags
 
     def _process(self, t, request_number, msg):
-        self._log(DEBUG, "Request: {}".format(CMD_NAMES[t]))
+        self._log(DEBUG, f"Request: {CMD_NAMES[t]}")
         if t == CMD_OPEN:
             path = msg.get_text()
             flags = self._convert_pflags(msg.get_int())

@@ -1,5 +1,6 @@
 """Base classes and helpers for testing paramiko."""
 
+
 import functools
 import locale
 import os
@@ -22,7 +23,7 @@ _non_ascii_locales = [
     "uk_UA",
 ]
 # Also include UTF-8 versions of these locales
-_non_ascii_locales.extend([name + ".utf8" for name in _non_ascii_locales])
+_non_ascii_locales.extend([f"{name}.utf8" for name in _non_ascii_locales])
 
 
 def requireNonAsciiLocale(category_name="LC_ALL"):
